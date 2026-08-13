@@ -1,0 +1,182 @@
+{
+  "schemaVersion": 1,
+  "milestone": "ready-for-owner",
+  "changes": [
+    {
+      "idempotencyKey": "driver-instrument-redesign-2026-08-13",
+      "summary": "Replaced accumulated visual overrides with one consolidated premium Android-first Driver Instrument system while preserving every protected workflow and data contract.",
+      "files": [
+        "app/globals.css",
+        "app/v2/styles.css",
+        "tests/v2-driver-instrument.test.mjs",
+        "docs/qa/stopscore-driver-instrument-redesign-2026-08-13.md"
+      ],
+      "acceptanceCriteria": [
+        "Home, setup, route, Work Mode, Stop Knowledge, completion, and settings read as one intentional operational product.",
+        "Equipment and trailer choices remain complete horizontal touch rails and Equipment Information uses large red-defined controls.",
+        "Authentication, persistence, ownership, idempotency, recovery, OSM identity, and workflow state remain unchanged."
+      ],
+      "recordedAt": "2026-08-13T20:30:00.000Z"
+    },
+    {
+      "idempotencyKey": "equipment-weather-refinement-2026-08-13",
+      "summary": "Refined the Home weather and traffic indicators, added horizontal equipment and complete trailer rails, and enlarged the equipment information panel without changing workflow or saved data.",
+      "files": [
+        "app/v2/components/Home.tsx",
+        "app/v2/components/EquipmentFlow.tsx",
+        "app/v2/styles.css"
+      ],
+      "acceptanceCriteria": [
+        "Weather and Traffic use restrained outline symbols and truthful external links.",
+        "All five equipment types and all six trailer types are available in horizontal touch-scroll rails.",
+        "Equipment Information uses a larger raised surface and red-defined controls while preserving validation, persistence, and workflow state."
+      ],
+      "recordedAt": "2026-08-13T08:45:00.000Z"
+    },
+    {
+      "idempotencyKey": "premium-visual-rebuild-2026-08-13",
+      "summary": "Rebuilt StopScore around one premium Android-first visual system and replaced the rejected Home image while preserving all protected behavior and data.",
+      "files": [
+        "app/globals.css",
+        "app/v2/components",
+        "app/v2/styles.css",
+        "public/assets/stopscore-road-hero.webp"
+      ],
+      "acceptanceCriteria": [
+        "Every screen reads as one intentional StopScore product with an obvious primary driver action.",
+        "The Home image uses a realistic clean-air mountain highway composition and is optimized for mobile delivery.",
+        "Authentication, persistence, ownership, idempotency, OSM identity, recovery, and saved data remain unchanged."
+      ],
+      "recordedAt": "2026-08-13T09:15:00.000Z"
+    },
+    {
+      "idempotencyKey": "bounded-completion-2026-08-13",
+      "summary": "Completed the approved StopScore gaps without changing authentication, persistence, ownership, idempotency, or workflow authority.",
+      "files": [
+        "app/v2/components/AppShell.tsx",
+        "app/v2/components/Home.tsx",
+        "app/v2/components/RouteFlow.tsx",
+        "app/v2/components/WorkMode.tsx",
+        "app/v2/styles.css"
+      ],
+      "acceptanceCriteria": [
+        "The driver workflow uses only truthful facts and implemented controls.",
+        "Existing authentication, persistence, ownership, idempotency, and recovery contracts remain protected."
+      ],
+      "recordedAt": "2026-08-13T07:39:32.344Z"
+    },
+    {
+      "idempotencyKey": "builder-mcp-2026-08-13",
+      "summary": "Added and project-scoped the StopScore Builder MCP with protected contracts, bounded work packages, status evidence, and release confirmation controls.",
+      "files": [
+        "tools/stopscore-mcp",
+        ".codex/config.toml",
+        "AGENTS.md"
+      ],
+      "acceptanceCriteria": [
+        "Future Codex sessions can load the authoritative StopScore contract and completion state.",
+        "Production confirmation requires passing evidence for the exact owner-tested version."
+      ],
+      "recordedAt": "2026-08-13T07:39:32.344Z"
+    }
+  ],
+  "verifications": [
+    {
+      "idempotencyKey": "app-gate-v145",
+      "versionId": "stopscore-owner-test-v145",
+      "command": "npm test",
+      "status": "passed",
+      "summary": "104/104 application tests passed: 69 backend/workflow tests, 24 mounted UI tests, and 11 production artifact and visual-contract tests, including a successful production build.",
+      "requiredForRelease": true,
+      "recordedAt": "2026-08-13T20:30:00.000Z"
+    },
+    {
+      "idempotencyKey": "quality-gates-v145",
+      "versionId": "stopscore-owner-test-v145",
+      "command": "npm run lint && npm run validate:artifact && npm run mcp:typecheck && npm run mcp:test && git diff --check",
+      "status": "passed",
+      "summary": "ESLint, production artifact validation, Builder MCP typecheck, 11/11 MCP tests, and diff validation passed.",
+      "requiredForRelease": true,
+      "recordedAt": "2026-08-13T20:35:00.000Z"
+    },
+    {
+      "idempotencyKey": "app-gate-v144",
+      "versionId": "stopscore-owner-test-v144",
+      "command": "npm test",
+      "status": "passed",
+      "summary": "100/100 application tests passed, including backend, persistence, mounted UI, accessibility, horizontal setup rails, complete trailer selection, and production artifact contracts.",
+      "requiredForRelease": true,
+      "recordedAt": "2026-08-13T08:45:00.000Z"
+    },
+    {
+      "idempotencyKey": "quality-gates-v144",
+      "versionId": "stopscore-owner-test-v144",
+      "command": "npm run lint && npm run validate:artifact && npm run mcp:typecheck && npm run mcp:test && git diff --check",
+      "status": "passed",
+      "summary": "Lint, production artifact validation, MCP typecheck, 11/11 MCP tests, and diff validation passed.",
+      "requiredForRelease": true,
+      "recordedAt": "2026-08-13T08:45:00.000Z"
+    },
+    {
+      "idempotencyKey": "app-gate-v143",
+      "versionId": "stopscore-owner-test-v143",
+      "command": "npm test",
+      "status": "passed",
+      "summary": "99/99 application tests passed, including persistence, authenticated boundaries, mounted UI, accessibility, and production artifact contracts.",
+      "requiredForRelease": true,
+      "recordedAt": "2026-08-13T07:39:32.344Z"
+    },
+    {
+      "idempotencyKey": "lint-v143",
+      "versionId": "stopscore-owner-test-v143",
+      "command": "npm run lint",
+      "status": "passed",
+      "summary": "ESLint passed.",
+      "requiredForRelease": true,
+      "recordedAt": "2026-08-13T07:39:32.344Z"
+    },
+    {
+      "idempotencyKey": "artifact-v143",
+      "versionId": "stopscore-owner-test-v143",
+      "command": "npm run validate:artifact",
+      "status": "passed",
+      "summary": "Production build and Sites artifact validation passed.",
+      "requiredForRelease": true,
+      "recordedAt": "2026-08-13T07:39:32.344Z"
+    },
+    {
+      "idempotencyKey": "mcp-gate-v143",
+      "versionId": "stopscore-owner-test-v143",
+      "command": "npm run mcp:typecheck && npm run mcp:test",
+      "status": "passed",
+      "summary": "MCP typecheck and 11/11 contract, safety, resource, stdio, and HTTP tests passed.",
+      "requiredForRelease": true,
+      "recordedAt": "2026-08-13T07:39:32.344Z"
+    },
+    {
+      "idempotencyKey": "visual-contracts-v143",
+      "versionId": "stopscore-owner-test-v143",
+      "command": "mounted visual contracts and production artifact verification",
+      "status": "passed",
+      "summary": "Mounted visual contracts, accessibility contracts, mobile asset delivery, theme contracts, and production artifact verification passed; local browser preview served a stale cache.",
+      "requiredForRelease": true,
+      "recordedAt": "2026-08-13T07:39:32.344Z"
+    }
+  ],
+  "blockers": [],
+  "releaseReady": true,
+  "reviewHandoff": {
+    "versionId": "stopscore-owner-test-v145",
+    "url": "https://stopscore-driver-os.locon007.chatgpt.site",
+    "finishingTouches": [
+      "Test sign-in on the phone you will use for the driver pilot.",
+      "Complete one full day with a test stop from equipment setup through Finish Day.",
+      "Confirm the exact version stopscore-owner-test-v145 before widening driver access."
+    ],
+    "knownLimitations": [
+      "Historical Stop Knowledge aggregation is deferred to the next approved data phase.",
+      "ChatGPT web connection for the Builder MCP still needs a remote HTTPS endpoint and developer-mode connector setup."
+    ]
+  },
+  "releaseConfirmation": null
+}

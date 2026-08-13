@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.v2.json",
+  "include": [
+    "app/v2/**/*.ts",
+    "app/api/v2/**/*.ts",
+    "db/index.ts",
+    "db/schema.ts",
+    "tests/v2-*.ts",
+    "tests/v2-*.tsx"
+  ]
+}

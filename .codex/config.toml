@@ -1,0 +1,13 @@
+[mcp_servers.stopscore_builder]
+command = "node"
+args = ["--import", "tsx", "tools/stopscore-mcp/src/stdio.ts"]
+cwd = "/workspace/sites/stopscore-driver-os"
+enabled = true
+required = true
+startup_timeout_sec = 20
+tool_timeout_sec = 60
+default_tools_approval_mode = "writes"
+
+[mcp_servers.stopscore_builder.tools.confirm_production_release]
+approval_mode = "prompt"
+

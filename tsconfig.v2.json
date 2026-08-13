@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": false
+  },
+  "include": [
+    "app/v2/**/*.ts",
+    "app/v2/**/*.tsx",
+    "app/api/v2/**/*.ts",
+    "app/api/place-search/**/*.ts",
+    "app/page.tsx",
+    "app/layout.tsx",
+    "app/manifest.ts",
+    "app/theme.tsx",
+    "db/index.ts",
+    "db/schema.ts"
+  ],
+  "exclude": ["node_modules"]
+}
