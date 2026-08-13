@@ -1,0 +1,955 @@
+{
+  "version": "6",
+  "dialect": "sqlite",
+  "id": "9e2d9678-6506-4f38-83b4-58a502e86d56",
+  "prevId": "ab31c10c-d958-4794-b174-0c60207ba5dd",
+  "tables": {
+    "driver_preferences": {
+      "name": "driver_preferences",
+      "columns": {
+        "driver_id": {
+          "name": "driver_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "navigation_app": {
+          "name": "navigation_app",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'google'"
+        },
+        "traffic_layer_enabled": {
+          "name": "traffic_layer_enabled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": true
+        },
+        "satellite_view_enabled": {
+          "name": "satellite_view_enabled",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "anonymous_experiences": {
+          "name": "anonymous_experiences",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": false
+        },
+        "public_driver_name": {
+          "name": "public_driver_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "saved_routes": {
+      "name": "saved_routes",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "driver_id": {
+          "name": "driver_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "stops": {
+          "name": "stops",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "saved_routes_driver_idx": {
+          "name": "saved_routes_driver_idx",
+          "columns": [
+            "driver_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "saved_stops": {
+      "name": "saved_stops",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
+        "driver_id": {
+          "name": "driver_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "stop_type": {
+          "name": "stop_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "open_hours": {
+          "name": "open_hours",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'—'"
+        },
+        "close_hours": {
+          "name": "close_hours",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'—'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "saved_stops_driver_idx": {
+          "name": "saved_stops_driver_idx",
+          "columns": [
+            "driver_id"
+          ],
+          "isUnique": false
+        },
+        "saved_stops_driver_address_idx": {
+          "name": "saved_stops_driver_address_idx",
+          "columns": [
+            "driver_id",
+            "address"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "v2_experiences": {
+      "name": "v2_experiences",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "workday_id": {
+          "name": "workday_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "stop_id": {
+          "name": "stop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "driver_id": {
+          "name": "driver_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "yard": {
+          "name": "yard",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "staging": {
+          "name": "staging",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "staff": {
+          "name": "staff",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "waiting_time": {
+          "name": "waiting_time",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "bathroom_access": {
+          "name": "bathroom_access",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "waiting_category": {
+          "name": "waiting_category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "v2_experiences_stop_idx": {
+          "name": "v2_experiences_stop_idx",
+          "columns": [
+            "stop_id"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {
+        "v2_experiences_stop_owner_fk": {
+          "name": "v2_experiences_stop_owner_fk",
+          "tableFrom": "v2_experiences",
+          "tableTo": "v2_stops",
+          "columnsFrom": [
+            "stop_id",
+            "workday_id",
+            "driver_id"
+          ],
+          "columnsTo": [
+            "id",
+            "workday_id",
+            "driver_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "v2_experiences_yard_check": {
+          "name": "v2_experiences_yard_check",
+          "value": "\"v2_experiences\".\"yard\" between 1 and 5"
+        },
+        "v2_experiences_staging_check": {
+          "name": "v2_experiences_staging_check",
+          "value": "\"v2_experiences\".\"staging\" between 1 and 5"
+        },
+        "v2_experiences_staff_check": {
+          "name": "v2_experiences_staff_check",
+          "value": "\"v2_experiences\".\"staff\" between 1 and 5"
+        },
+        "v2_experiences_waiting_time_check": {
+          "name": "v2_experiences_waiting_time_check",
+          "value": "\"v2_experiences\".\"waiting_time\" between 1 and 5"
+        },
+        "v2_experiences_bathroom_check": {
+          "name": "v2_experiences_bathroom_check",
+          "value": "\"v2_experiences\".\"bathroom_access\" between 1 and 5"
+        },
+        "v2_experiences_waiting_category_check": {
+          "name": "v2_experiences_waiting_category_check",
+          "value": "\"v2_experiences\".\"waiting_category\" in ('quick', 'standard', 'long', 'extremely_delayed')"
+        }
+      }
+    },
+    "v2_idempotency": {
+      "name": "v2_idempotency",
+      "columns": {
+        "driver_id": {
+          "name": "driver_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "operation": {
+          "name": "operation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "workday_id": {
+          "name": "workday_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "aggregate": {
+          "name": "aggregate",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "v2_idempotency_workday_idx": {
+          "name": "v2_idempotency_workday_idx",
+          "columns": [
+            "workday_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "v2_idempotency_workday_owner_fk": {
+          "name": "v2_idempotency_workday_owner_fk",
+          "tableFrom": "v2_idempotency",
+          "tableTo": "v2_workdays",
+          "columnsFrom": [
+            "workday_id",
+            "driver_id"
+          ],
+          "columnsTo": [
+            "id",
+            "driver_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "v2_idempotency_pk": {
+          "columns": [
+            "driver_id",
+            "idempotency_key"
+          ],
+          "name": "v2_idempotency_pk"
+        }
+      },
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    },
+    "v2_stop_events": {
+      "name": "v2_stop_events",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "workday_id": {
+          "name": "workday_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "stop_id": {
+          "name": "stop_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "driver_id": {
+          "name": "driver_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "v2_stop_events_workday_idx": {
+          "name": "v2_stop_events_workday_idx",
+          "columns": [
+            "workday_id",
+            "created_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "v2_stop_events_stop_owner_fk": {
+          "name": "v2_stop_events_stop_owner_fk",
+          "tableFrom": "v2_stop_events",
+          "tableTo": "v2_stops",
+          "columnsFrom": [
+            "stop_id",
+            "workday_id",
+            "driver_id"
+          ],
+          "columnsTo": [
+            "id",
+            "workday_id",
+            "driver_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "v2_stop_events_action_check": {
+          "name": "v2_stop_events_action_check",
+          "value": "\"v2_stop_events\".\"action\" in ('navigate', 'arrive', 'depart')"
+        }
+      }
+    },
+    "v2_stops": {
+      "name": "v2_stops",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "workday_id": {
+          "name": "workday_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "driver_id": {
+          "name": "driver_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "address": {
+          "name": "address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "stop_type": {
+          "name": "stop_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "stop_order": {
+          "name": "stop_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'pending'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        }
+      },
+      "indexes": {
+        "v2_stops_id_workday_driver_idx": {
+          "name": "v2_stops_id_workday_driver_idx",
+          "columns": [
+            "id",
+            "workday_id",
+            "driver_id"
+          ],
+          "isUnique": true
+        },
+        "v2_stops_workday_order_idx": {
+          "name": "v2_stops_workday_order_idx",
+          "columns": [
+            "workday_id",
+            "stop_order"
+          ],
+          "isUnique": true
+        },
+        "v2_stops_workday_provider_idx": {
+          "name": "v2_stops_workday_provider_idx",
+          "columns": [
+            "workday_id",
+            "provider_id"
+          ],
+          "isUnique": true
+        },
+        "v2_stops_driver_workday_idx": {
+          "name": "v2_stops_driver_workday_idx",
+          "columns": [
+            "driver_id",
+            "workday_id"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "v2_stops_workday_owner_fk": {
+          "name": "v2_stops_workday_owner_fk",
+          "tableFrom": "v2_stops",
+          "tableTo": "v2_workdays",
+          "columnsFrom": [
+            "workday_id",
+            "driver_id"
+          ],
+          "columnsTo": [
+            "id",
+            "driver_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "v2_stops_provider_check": {
+          "name": "v2_stops_provider_check",
+          "value": "(\"v2_stops\".\"provider_id\" glob 'osm:node:[1-9]*' and substr(\"v2_stops\".\"provider_id\", length('osm:node:') + 1) not glob '*[^0-9]*') or (\"v2_stops\".\"provider_id\" glob 'osm:way:[1-9]*' and substr(\"v2_stops\".\"provider_id\", length('osm:way:') + 1) not glob '*[^0-9]*') or (\"v2_stops\".\"provider_id\" glob 'osm:relation:[1-9]*' and substr(\"v2_stops\".\"provider_id\", length('osm:relation:') + 1) not glob '*[^0-9]*')"
+        },
+        "v2_stops_type_check": {
+          "name": "v2_stops_type_check",
+          "value": "\"v2_stops\".\"stop_type\" in ('delivery', 'pickup', 'drop_hook', 'delivery_pickup')"
+        },
+        "v2_stops_order_check": {
+          "name": "v2_stops_order_check",
+          "value": "\"v2_stops\".\"stop_order\" >= 0"
+        },
+        "v2_stops_state_check": {
+          "name": "v2_stops_state_check",
+          "value": "\"v2_stops\".\"state\" in ('pending', 'navigating', 'arrived', 'departed', 'experience_published')"
+        }
+      }
+    },
+    "v2_workdays": {
+      "name": "v2_workdays",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "driver_id": {
+          "name": "driver_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active_key": {
+          "name": "active_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "day_date": {
+          "name": "day_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "equipment_type": {
+          "name": "equipment_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "truck_number": {
+          "name": "truck_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "trailer_number": {
+          "name": "trailer_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "trailer_type": {
+          "name": "trailer_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "odometer": {
+          "name": "odometer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active_stop_index": {
+          "name": "active_stop_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "v2_workdays_active_key_idx": {
+          "name": "v2_workdays_active_key_idx",
+          "columns": [
+            "active_key"
+          ],
+          "isUnique": true
+        },
+        "v2_workdays_id_driver_idx": {
+          "name": "v2_workdays_id_driver_idx",
+          "columns": [
+            "id",
+            "driver_id"
+          ],
+          "isUnique": true
+        },
+        "v2_workdays_driver_updated_idx": {
+          "name": "v2_workdays_driver_updated_idx",
+          "columns": [
+            "driver_id",
+            "updated_at"
+          ],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {
+        "v2_workdays_state_check": {
+          "name": "v2_workdays_state_check",
+          "value": "\"v2_workdays\".\"state\" in ('setup', 'active', 'completed')"
+        },
+        "v2_workdays_equipment_check": {
+          "name": "v2_workdays_equipment_check",
+          "value": "\"v2_workdays\".\"equipment_type\" in ('tractor', 'bobtail', 'straight_truck', 'cargo_van')"
+        },
+        "v2_workdays_trailer_check": {
+          "name": "v2_workdays_trailer_check",
+          "value": "(\"v2_workdays\".\"equipment_type\" = 'tractor' and \"v2_workdays\".\"trailer_type\" in ('dry_van', 'reefer', 'flatbed', 'step_deck')) or (\"v2_workdays\".\"equipment_type\" <> 'tractor' and \"v2_workdays\".\"trailer_type\" is null and \"v2_workdays\".\"trailer_number\" is null)"
+        },
+        "v2_workdays_active_stop_check": {
+          "name": "v2_workdays_active_stop_check",
+          "value": "\"v2_workdays\".\"active_stop_index\" >= 0"
+        }
+      }
+    },
+    "workdays": {
+      "name": "workdays",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "driver_id": {
+          "name": "driver_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "active_key": {
+          "name": "active_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "day_date": {
+          "name": "day_date",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "phase": {
+          "name": "phase",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'active'"
+        },
+        "snapshot": {
+          "name": "snapshot",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "CURRENT_TIMESTAMP"
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "workdays_driver_status_idx": {
+          "name": "workdays_driver_status_idx",
+          "columns": [
+            "driver_id",
+            "status"
+          ],
+          "isUnique": false
+        },
+        "workdays_driver_completed_idx": {
+          "name": "workdays_driver_completed_idx",
+          "columns": [
+            "driver_id",
+            "completed_at"
+          ],
+          "isUnique": false
+        },
+        "workdays_active_key_idx": {
+          "name": "workdays_active_key_idx",
+          "columns": [
+            "active_key"
+          ],
+          "isUnique": true
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "checkConstraints": {}
+    }
+  },
+  "views": {},
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  },
+  "internal": {
+    "indexes": {}
+  }
+}

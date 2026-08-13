@@ -1,0 +1,1 @@
+ALTER TABLE `saved_stops` ADD `stop_type` text;

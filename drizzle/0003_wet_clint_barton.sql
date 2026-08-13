@@ -1,0 +1,1 @@
+ALTER TABLE `driver_preferences` ADD `satellite_view_enabled` integer DEFAULT false NOT NULL;
