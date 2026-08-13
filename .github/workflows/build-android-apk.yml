@@ -7,6 +7,8 @@ on:
       - "android-wrapper/**"
       - ".github/workflows/build-android-apk.yml"
   workflow_dispatch:
+  issues:
+    types: [opened]
 
 permissions:
   contents: write
@@ -56,5 +58,5 @@ jobs:
           files: android-wrapper/StopScore.apk
           body: |
             Installable Android APK for StopScore Driver OS.
-            
+
             Download StopScore.apk on your Android phone, open it, and allow installation from your browser when Android asks.
