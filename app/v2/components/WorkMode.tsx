@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { BookOpen, Copy, FlagCheckered, Info, NavigationArrow, Truck } from "@phosphor-icons/react";
 import type { StopAction, StopType, WorkdayAggregate } from "../domain/workday.ts";
-import { DROP_HOOK_DETAIL_LABELS, getWorkModeAction, navigationTarget } from "../workflow/model.ts";
+import { DROP_HOOK_DETAIL_LABELS, formatClockTime, formatWaitingDuration, getWorkModeAction, minutesSinceArrival, navigationTarget, stopWaitingMinutes } from "../workflow/model.ts";
 import { StopKnowledgePanel } from "./StopKnowledgePanel";
 
 const trailerLabels: Record<string, string> = { dry_van: "Dry Van", reefer: "Reefer", flatbed: "Flatbed", step_deck: "Step Deck", tanker: "Tanker", other: "Other" };
@@ -19,6 +19,14 @@ export function WorkMode({ workday, onEvent }: { workday: WorkdayAggregate; onEv
   if (!stop) return null;
   const legal = getWorkModeAction(stop.state);
   const navigation = navigationTarget(stop.address);
+  // Arrive and Depart are recorded, so the strip shows the real time and how long the stop took
+  // rather than telling the driver something was recorded without saying what.
+  const arrivalTime = formatClockTime(stop.arrivedAt);
+  const waited = stopWaitingMinutes(stop);
+  const sinceArrival = minutesSinceArrival(stop);
+  const elapsedLabel = waited !== null ? formatWaitingDuration(waited)
+    : sinceArrival !== null ? `${formatWaitingDuration(sinceArrival)} so far`
+    : null;
   const equipmentValues = [
     workday.equipment.truckNumber,
     workday.equipment.trailerType ? trailerLabels[workday.equipment.trailerType] : "Not applicable",
@@ -67,7 +75,8 @@ export function WorkMode({ workday, onEvent }: { workday: WorkdayAggregate; onEv
       <div className="v2-equipment-inline" aria-label="Active equipment"><Truck aria-hidden="true" /><span>Truck #{equipmentValues[0]} · {equipmentValues[1]} · TRL #{equipmentValues[2]}</span></div>
     </article>
 
-    {stop.state !== "pending" ? <div className="v2-arrival-strip"><strong>ARRIVAL</strong><span>Recorded for this stop</span></div> : null}
+    {arrivalTime ? <div className="v2-arrival-strip"><strong>ARRIVAL</strong><span>{arrivalTime}</span>{elapsedLabel ? <em className="v2-arrival-elapsed">{elapsedLabel}</em> : null}</div>
+      : stop.state !== "pending" ? <div className="v2-arrival-strip"><strong>ARRIVAL</strong><span>Recorded for this stop</span></div> : null}
     <button className="v2-knowledge-row" type="button" onClick={() => setKnowledgeOpen(true)}><BookOpen aria-hidden="true" /><span>Stop Knowledge</span><NavigationArrow aria-hidden="true" /></button>
 
     {nextStop ? <article className="v2-next-stop-card"><p className="v2-eyebrow">Next Stop</p><strong>{nextStop.displayName}</strong><span>{nextStop.address}</span></article> : null}

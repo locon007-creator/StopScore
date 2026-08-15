@@ -87,3 +87,33 @@ export function formatWaitingDuration(minutes: number): string {
   const rest = minutes % 60;
   return rest === 0 ? `${hours} hr` : `${hours} hr ${rest} min`;
 }
+
+/** Wall-clock time of a recorded event, for example "9:42 AM". */
+export function formatClockTime(iso: string | undefined): string | null {
+  if (!iso) return null;
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(at);
+}
+
+/**
+ * Minutes a driver has been at a stop that has not departed yet, so Work Mode can show elapsed
+ * time while the driver is still standing in the yard.
+ */
+export function minutesSinceArrival(stop: WorkdayStop, now: number = Date.now()): number | null {
+  if (!stop.arrivedAt || stop.departedAt) return null;
+  const arrived = Date.parse(stop.arrivedAt);
+  if (!Number.isFinite(arrived) || now < arrived) return null;
+  return Math.round((now - arrived) / 60000);
+}
+
+/**
+ * A driver is greeted by name only when a real name is known. Signing in without a full-name
+ * claim leaves the email address as the display name, and an address is not a name to greet
+ * someone by.
+ */
+export function driverFirstName(displayName: string | null | undefined): string | null {
+  const trimmed = displayName?.trim();
+  if (!trimmed || trimmed.includes("@")) return null;
+  return trimmed.split(/\s+/)[0] || null;
+}

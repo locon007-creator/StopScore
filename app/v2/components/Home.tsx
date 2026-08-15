@@ -3,6 +3,7 @@
 import { forwardRef } from "react";
 import { Cloud, RoadHorizon } from "@phosphor-icons/react";
 import type { SessionState } from "../useWorkday";
+import { driverFirstName } from "../workflow/model.ts";
 
 const greeting = (hour: number) => {
   if (hour < 12) return "Good morning";
@@ -19,7 +20,7 @@ const formattedDate = (date: Date) => new Intl.DateTimeFormat("en-US", {
 
 export const Home = forwardRef<HTMLButtonElement, { session: SessionState; onStart: () => void; onRetrySession: () => void }>(function Home({ session, onStart, onRetrySession }, ref) {
   const now = new Date();
-  const driverName = session.status === "authenticated" ? session.user.displayName.trim().split(/\s+/)[0] : null;
+  const driverName = session.status === "authenticated" ? driverFirstName(session.user.displayName) : null;
   return (
     <section className="v2-home" aria-labelledby="home-greeting">
       <div className="v2-home-backdrop" style={{ backgroundImage: "url(/assets/stopscore-road-hero.webp)" }} aria-hidden="true" />

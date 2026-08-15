@@ -82,3 +82,29 @@ test("recording arrive and depart stamps the stop the driver acted on", async ()
   assert.equal(departed.stops[1].arrivedAt, undefined);
   assert.equal(departed.stops[1].departedAt, undefined);
 });
+
+test("a driver is greeted by name only when a real name is known", async () => {
+  const { driverFirstName } = await workflow();
+  assert.equal(driverFirstName("Jose Martinez"), "Jose");
+  assert.equal(driverFirstName("  Jose  "), "Jose");
+  assert.equal(driverFirstName("jose@stopscore.test"), null);
+  assert.equal(driverFirstName(""), null);
+  assert.equal(driverFirstName(null), null);
+  assert.equal(driverFirstName(undefined), null);
+});
+
+test("a recorded arrival reads back as wall-clock time", async () => {
+  const { formatClockTime } = await workflow();
+  assert.match(formatClockTime("2026-05-16T09:42:00Z") ?? "", /\d{1,2}:\d{2}\s?(AM|PM)/);
+  assert.equal(formatClockTime(undefined), null);
+  assert.equal(formatClockTime("not-a-time"), null);
+});
+
+test("time at a stop keeps counting until the driver departs", async () => {
+  const { minutesSinceArrival } = await workflow();
+  const arrived = "2026-05-16T09:42:00Z";
+  const now = Date.parse("2026-05-16T10:00:00Z");
+  assert.equal(minutesSinceArrival(stop(arrived), now), 18);
+  assert.equal(minutesSinceArrival(stop(arrived, "2026-05-16T10:00:00Z"), now), null);
+  assert.equal(minutesSinceArrival(stop(), now), null);
+});
