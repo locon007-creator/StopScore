@@ -135,7 +135,16 @@ export class D1WorkdayRepository implements WorkdayRepository {
     const next: WorkdayAggregate = {
       ...current,
       updatedAt: write.now,
-      stops: current.stops.map(stop => stop.id === stopId ? { ...stop, state: nextState } : stop),
+      // The event row stores write.now as created_at, so stamping the same value here keeps the
+      // aggregate returned to the caller identical to what a later read projects back.
+      stops: current.stops.map(stop => stop.id === stopId
+        ? {
+            ...stop,
+            state: nextState,
+            ...(action === "arrive" ? { arrivedAt: write.now } : {}),
+            ...(action === "depart" ? { departedAt: write.now } : {}),
+          }
+        : stop),
     };
     const eventId = crypto.randomUUID();
     const results = await this.batchWithReplay([

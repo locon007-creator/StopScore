@@ -76,7 +76,7 @@ export function WorkMode({ workday, onEvent }: { workday: WorkdayAggregate; onEv
     </article>
 
     {arrivalTime ? <div className="v2-arrival-strip"><strong>ARRIVAL</strong><span>{arrivalTime}</span>{elapsedLabel ? <em className="v2-arrival-elapsed">{elapsedLabel}</em> : null}</div>
-      : stop.state !== "pending" ? <div className="v2-arrival-strip"><strong>ARRIVAL</strong><span>Recorded for this stop</span></div> : null}
+      : stop.state === "arrived" || stop.state === "departed" ? <div className="v2-arrival-strip"><strong>ARRIVAL</strong><span>Recorded for this stop</span></div> : null}
     <button className="v2-knowledge-row" type="button" onClick={() => setKnowledgeOpen(true)}><BookOpen aria-hidden="true" /><span>Stop Knowledge</span><NavigationArrow aria-hidden="true" /></button>
 
     {nextStop ? <article className="v2-next-stop-card"><p className="v2-eyebrow">Next Stop</p><strong>{nextStop.displayName}</strong><span>{nextStop.address}</span></article> : null}
