@@ -8,7 +8,11 @@ export type ResolvedThemeMode = Exclude<ThemeMode, "auto">;
 
 export const driverPreferencesStorageKey = "stopscore-driver-preferences";
 
-export const defaultTheme: ThemeMode = "auto";
+/**
+ * StopScore is designed dark and a driver cab is usually dark, so a driver gets dark before
+ * choosing anything. Settings still offers Light, and that choice persists.
+ */
+export const defaultTheme: ThemeMode = "dark";
 
 const isThemeMode = (value: unknown): value is ThemeMode => themeModes.includes(value as ThemeMode);
 

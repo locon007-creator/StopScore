@@ -55,3 +55,10 @@
 .v2-measured-wait strong{font-size:2.1rem;line-height:1.1;font-variant-numeric:tabular-nums}
 .v2-measured-wait p{margin:0;font-size:.86rem;color:var(--color-secondary-text);max-width:34ch}
 .v2-measured-wait .v2-primary-button{margin-top:8px;width:100%}
+.v2-active-home .v2-home-content{justify-content:flex-start;gap:var(--space-4)}
+.v2-active-home-stops{display:flex;flex-direction:column;gap:12px;width:100%}
+.v2-active-home-card{display:flex;flex-direction:column;gap:4px;padding:16px;border:1px solid var(--color-border);border-radius:var(--v2-card-radius);background:var(--color-surface)}
+.v2-active-home-card strong{font-size:1.22rem;line-height:1.2}
+.v2-active-home-card span{display:flex;align-items:flex-start;gap:6px;font-size:.86rem;color:var(--color-secondary-text)}
+.v2-active-home-card span svg{flex:none;margin-top:2px}
+.v2-active-home-card small{font-size:.8rem;color:var(--color-secondary-text);font-variant-numeric:tabular-nums}

@@ -12,8 +12,10 @@ test("auto resolves to the current device theme while explicit choices stay fixe
   assert.equal(resolveThemeMode("light", true), "light");
 });
 
-test("the persisted theme contract includes Auto and defaults new drivers to Auto", async () => {
+test("the persisted theme contract still offers Auto but defaults new drivers to Dark", async () => {
   const theme = await import("../app/theme.tsx") as Record<string, unknown>;
   assert.deepEqual(theme.themeModes, ["auto", "light", "dark"]);
-  assert.equal(theme.defaultTheme, "auto");
+  // StopScore is designed dark and the approved boards are dark, so a driver who has chosen
+  // nothing gets Dark rather than whatever their phone happens to be set to.
+  assert.equal(theme.defaultTheme, "dark");
 });

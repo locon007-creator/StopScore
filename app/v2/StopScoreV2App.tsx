@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorkdayAggregate } from "./domain/workday.ts";
 import { AppShell } from "./components/AppShell";
 import { EquipmentFlow } from "./components/EquipmentFlow";
+import { ActiveDayHome } from "./components/ActiveDayHome";
 import { Home } from "./components/Home";
 import { RouteFlow } from "./components/RouteFlow";
 import { WorkMode } from "./components/WorkMode";
@@ -23,7 +24,7 @@ import {
 } from "./setup/recovery.ts";
 import { useWorkday } from "./useWorkday";
 
-type View = "loading" | "home" | "setup" | "active" | "completed";
+type View = "loading" | "home" | "active-home" | "setup" | "active" | "completed";
 const sessionEndpoint = "/api/session";
 const signInHref = "/signin-with-chatgpt?return_to=%2F";
 
@@ -82,7 +83,9 @@ export function StopScoreWorkspace({ client }: { client: WorkdayClientState }) {
     const authority = resolveSetupAuthority({ server: workday, draft, dismissedCompletedId: readDismissedCompletedId() });
     if (authority.clearDraft) clearSetupDraft(storage);
     if (authority.source === "server") {
-      if (authority.aggregate.state === "active") setView("active");
+      // Reopening the app partway through a day lands on the active-day Home, so a driver sees
+      // where they stand before returning to Work Mode.
+      if (authority.aggregate.state === "active") setView("active-home");
       else if (authority.aggregate.state === "completed") setView("completed");
       else { setSetup(setupFromServer(authority.aggregate)); setView("setup"); }
     } else if (authority.source === "draft") {
@@ -148,6 +151,7 @@ export function StopScoreWorkspace({ client }: { client: WorkdayClientState }) {
     <>
       {visibleView === "loading" ? <div className="v2-loading" role="status"><div className="v2-loading-card"><div className="v2-loading-brand" aria-label="StopScore"><b>STOP</b><b>SCORE</b></div><span aria-hidden="true" /><p>Loading your driver workspace…</p><small>Preparing today’s driver tools</small></div></div> : null}
       {visibleView === "home" ? <Home ref={startButton} session={session} onStart={begin} onRetrySession={() => void refresh()} /> : null}
+      {visibleView === "active-home" && workday ? <ActiveDayHome ref={startButton} session={session} workday={workday} onContinue={() => setView("active")} /> : null}
       {visibleView === "setup" && (["equipment-choice", "trailer-choice", "equipment-info", "equipment-ready"] as const).includes(setup.stage as "equipment-choice") ? <EquipmentFlow state={setup} dispatch={dispatch} onExit={() => setView("home")} /> : null}
       {visibleView === "setup" && !["equipment-choice", "trailer-choice", "equipment-info", "equipment-ready"].includes(setup.stage) ? <RouteFlow state={setup} dispatch={dispatch} onPrepare={prepare} /> : null}
       {workday && (visibleView === "active" || visibleView === "completed") ? <WorkflowStatus workday={workday} /> : null}
