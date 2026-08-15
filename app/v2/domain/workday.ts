@@ -42,6 +42,10 @@ export type RouteStopInput = {
 export type WorkdayStop = RouteStopInput & {
   id: string;
   state: StopState;
+  /** Recorded when the driver pressed Arrive. Absent until then. */
+  arrivedAt?: string;
+  /** Recorded when the driver pressed Depart. Absent until then. */
+  departedAt?: string;
 };
 
 export type WorkdayAggregate = {

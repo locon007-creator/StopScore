@@ -41,6 +41,7 @@ type WorkdayRow = {
   completed_at: string | null;
 };
 
+type StopEventRow = { stop_id: string; action: "arrive" | "depart"; recorded_at: string };
 type StopRow = {
   id: string;
   provider_id: string;
@@ -260,6 +261,22 @@ export class D1WorkdayRepository implements WorkdayRepository {
       `SELECT id, provider_id, display_name, address, stop_type, stop_order, state
        FROM v2_stops WHERE workday_id = ? AND driver_id = ? ORDER BY stop_order`,
     ).bind(workdayId, driverId).all<StopRow>();
+    // Arrive and Depart are already durable in v2_stop_events, so the recorded times are
+    // projected onto each stop rather than duplicated into v2_stops. The first event of each
+    // action wins, which keeps an idempotent retry from moving a recorded time.
+    const eventRows = await this.db.prepare(
+      `SELECT stop_id, action, MIN(created_at) AS recorded_at
+       FROM v2_stop_events
+       WHERE workday_id = ? AND driver_id = ? AND action IN ('arrive', 'depart')
+       GROUP BY stop_id, action`,
+    ).bind(workdayId, driverId).all<StopEventRow>();
+    const recordedTimes = new Map<string, { arrivedAt?: string; departedAt?: string }>();
+    for (const event of eventRows.results) {
+      const entry = recordedTimes.get(event.stop_id) ?? {};
+      if (event.action === "arrive") entry.arrivedAt = event.recorded_at;
+      if (event.action === "depart") entry.departedAt = event.recorded_at;
+      recordedTimes.set(event.stop_id, entry);
+    }
     const equipment: Equipment = {
       type: row.equipment_type,
       truckNumber: row.truck_number,
@@ -280,6 +297,7 @@ export class D1WorkdayRepository implements WorkdayRepository {
         type: stop.stop_type,
         order: stop.stop_order,
         state: stop.state,
+        ...recordedTimes.get(stop.id),
       })),
       createdAt: row.created_at,
       updatedAt: row.updated_at,

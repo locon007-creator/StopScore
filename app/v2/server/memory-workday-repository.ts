@@ -39,7 +39,7 @@ export class MemoryWorkdayRepository implements WorkdayRepository {
 
   async recordStopEvent(
     stopId: string,
-    _action: StopAction,
+    action: StopAction,
     expectedState: StopState,
     nextState: StopState,
     write: IdempotentWrite,
@@ -55,7 +55,14 @@ export class MemoryWorkdayRepository implements WorkdayRepository {
     stored.aggregate = {
       ...stored.aggregate,
       updatedAt: write.now,
-      stops: stored.aggregate.stops.map(item => item.id === stopId ? { ...item, state: nextState } : { ...item }),
+      stops: stored.aggregate.stops.map(item => item.id === stopId
+        ? {
+            ...item,
+            state: nextState,
+            ...(action === "arrive" ? { arrivedAt: write.now } : {}),
+            ...(action === "depart" ? { departedAt: write.now } : {}),
+          }
+        : { ...item }),
     };
     return this.commitReplay(write, stored.aggregate);
   }

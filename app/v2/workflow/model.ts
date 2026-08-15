@@ -1,4 +1,4 @@
-import type { StopAction, StopState, WorkdayAggregate } from "../domain/workday.ts";
+import type { StopAction, StopState, WaitingCategory, WorkdayAggregate, WorkdayStop } from "../domain/workday.ts";
 
 export const EQUIPMENT_DISPLAY_ORDER = ["Truck #", "Trailer Type", "TRL #", "Odometer"] as const;
 export const DROP_HOOK_DETAIL_LABELS = ["TRL # dropped", "TRL # picked up", "Reference #"] as const;
@@ -44,4 +44,46 @@ export function resolveWorkflowPresentation(workday: WorkdayAggregate): { focusI
     focusId: `workmode-${stop.id}-action`,
     announcement: `Stop ${workday.activeStopIndex + 1} of ${workday.stops.length}. ${stop.displayName}. ${action?.label ?? "In progress"}.`,
   };
+}
+
+/**
+ * Waiting time is measured, not asked. Arrive and Depart are already recorded for every stop,
+ * so the time a driver actually spent is the authoritative answer and no one has to estimate
+ * it from memory at the end of a shift.
+ *
+ * The upper bound of each documented waiting band becomes its threshold, in minutes. Note that
+ * the documented bands overlap between Quick (15-45 min) and Standard (30 min-1 hr), so
+ * Standard resolves to a narrow 45-60 minute window here. Widening it is a one-line change.
+ */
+export const WAITING_THRESHOLD_MINUTES = { quick: 45, standard: 60, long: 120 } as const;
+
+/** Minutes between the recorded Arrive and Depart, or null while either is missing. */
+export function stopWaitingMinutes(stop: WorkdayStop): number | null {
+  if (!stop.arrivedAt || !stop.departedAt) return null;
+  const arrived = Date.parse(stop.arrivedAt);
+  const departed = Date.parse(stop.departedAt);
+  if (!Number.isFinite(arrived) || !Number.isFinite(departed)) return null;
+  if (departed < arrived) return null;
+  return Math.round((departed - arrived) / 60000);
+}
+
+export function waitingCategoryFromMinutes(minutes: number): WaitingCategory {
+  if (minutes < WAITING_THRESHOLD_MINUTES.quick) return "quick";
+  if (minutes < WAITING_THRESHOLD_MINUTES.standard) return "standard";
+  if (minutes < WAITING_THRESHOLD_MINUTES.long) return "long";
+  return "extremely_delayed";
+}
+
+/** The measured waiting category for a stop, or null when the stop has not departed yet. */
+export function derivedWaitingCategory(stop: WorkdayStop): WaitingCategory | null {
+  const minutes = stopWaitingMinutes(stop);
+  return minutes === null ? null : waitingCategoryFromMinutes(minutes);
+}
+
+/** Compact driver-facing duration, for example "18 min" or "1 hr 15 min". */
+export function formatWaitingDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours} hr` : `${hours} hr ${rest} min`;
 }
