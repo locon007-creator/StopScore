@@ -71,6 +71,13 @@
       "when": 1786510288714,
       "tag": "0009_closed_squadron_sinister",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1786851963242,
+      "tag": "0010_lush_black_queen",
+      "breakpoints": true
     }
   ]
 }

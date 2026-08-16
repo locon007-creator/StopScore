@@ -121,3 +121,14 @@ test("time at a stop keeps counting until the driver departs", async () => {
   assert.equal(minutesSinceArrival(stop(arrived, "2026-05-16T10:00:00Z"), now), null);
   assert.equal(minutesSinceArrival(stop(), now), null);
 });
+
+test("total miles come only from two real odometer readings", async () => {
+  const { totalMiles } = await workflow();
+  assert.equal(totalMiles("125560", "125742"), 182);
+  assert.equal(totalMiles("125,560", "125,742 MI"), 182);
+  assert.equal(totalMiles("125560", null), null);
+  assert.equal(totalMiles("125560", undefined), null);
+  assert.equal(totalMiles("125560", ""), null);
+  assert.equal(totalMiles("125560", "125000"), null);
+  assert.equal(totalMiles("125560", "not a number"), null);
+});

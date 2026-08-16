@@ -108,6 +108,19 @@ export function minutesSinceArrival(stop: WorkdayStop, now: number = Date.now())
 }
 
 /**
+ * Total Miles from the two odometer readings a driver actually entered. Both must parse as
+ * whole numbers and the ending reading must not be behind the starting one; otherwise this
+ * returns null rather than a number that would be wrong.
+ */
+export function totalMiles(startOdometer: string, endOdometer: string | null | undefined): number | null {
+  if (!endOdometer) return null;
+  const start = Number.parseInt(startOdometer.replace(/[^0-9]/g, ""), 10);
+  const end = Number.parseInt(endOdometer.replace(/[^0-9]/g, ""), 10);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
+  return end - start;
+}
+
+/**
  * A driver is greeted by name only when a real name is known. Signing in without a full-name
  * claim leaves the email address as the display name, and an address is not a name to greet
  * someone by.

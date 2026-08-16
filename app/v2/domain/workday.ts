@@ -57,6 +57,9 @@ export type WorkdayAggregate = {
   createdAt?: string;
   updatedAt?: string;
   completedAt?: string | null;
+  /** Recorded when the driver finishes the day. Absent until then, and finishing does not
+   *  require one: StopScore has no source for an ending reading and will not guess it. */
+  endingOdometer?: string;
 };
 
 export type ExperienceScores = Record<ExperienceTopicKey, number>;
@@ -108,6 +111,16 @@ function requireBoundedText(value: unknown, label: string, maximum: number): str
 
 export function isCanonicalProviderId(value: unknown): value is string {
   return typeof value === "string" && canonicalProviderId.test(value);
+}
+
+/**
+ * Ending odometer is optional: a driver can finish a day without recording one, and Total Miles
+ * simply does not appear rather than being computed from a guess. When provided it follows the
+ * same bounded-text rule as the starting odometer.
+ */
+export function validateEndingOdometer(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  return requireBoundedText(value, "Ending odometer", 80);
 }
 
 export function validateEquipment(value: unknown): Equipment {

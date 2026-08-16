@@ -93,6 +93,7 @@ export function createWorkflowMutationClient(dependencies: WorkflowClientDepende
   return {
     event: (stopId: string, action: StopAction) => logicalMutation(`event:${stopId}:${action}`, `/api/v2/stops/${encodeURIComponent(stopId)}/events`, { action }),
     publish: (stopId: string, input: ExperienceInput, idempotencyKey: string) => mutate(`/api/v2/stops/${encodeURIComponent(stopId)}/experience`, input, idempotencyKey),
-    finish: (workdayId: string) => logicalMutation(`finish:${workdayId}`, "/api/v2/workday", { action: "finish", workdayId }),
+    finish: (workdayId: string, endingOdometer?: string) =>
+      logicalMutation(`finish:${workdayId}:${endingOdometer ?? ""}`, "/api/v2/workday", { action: "finish", workdayId, endingOdometer }),
   };
 }

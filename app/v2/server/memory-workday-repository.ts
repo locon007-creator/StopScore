@@ -76,7 +76,7 @@ export class MemoryWorkdayRepository implements WorkdayRepository {
     return this.commitReplay(write, stored.aggregate);
   }
 
-  async finish(workdayId: string, write: IdempotentWrite): Promise<WorkdayAggregate> {
+  async finish(workdayId: string, write: IdempotentWrite, endingOdometer: string | null): Promise<WorkdayAggregate> {
     const replay = this.replay(write);
     if (replay) return replay;
     const stored = this.workdays.get(workdayId);
@@ -85,6 +85,7 @@ export class MemoryWorkdayRepository implements WorkdayRepository {
       ...completeAggregate(stored.aggregate),
       updatedAt: write.now,
       completedAt: write.now,
+      ...(endingOdometer ? { endingOdometer } : {}),
     };
     return this.commitReplay(write, stored.aggregate);
   }

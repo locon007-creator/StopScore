@@ -23,5 +23,5 @@ export interface WorkdayRepository {
     write: IdempotentWrite,
   ): Promise<WorkdayAggregate>;
   publishExperience(stopId: string, experience: ExperienceInput, write: IdempotentWrite): Promise<WorkdayAggregate>;
-  finish(workdayId: string, write: IdempotentWrite): Promise<WorkdayAggregate>;
+  finish(workdayId: string, write: IdempotentWrite, endingOdometer: string | null): Promise<WorkdayAggregate>;
 }

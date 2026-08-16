@@ -64,6 +64,7 @@ export const v2Workdays = sqliteTable("v2_workdays", {
   trailerNumber: text("trailer_number"),
   trailerType: text("trailer_type"),
   odometer: text("odometer").notNull(),
+  endingOdometer: text("ending_odometer"),
   activeStopIndex: integer("active_stop_index").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),

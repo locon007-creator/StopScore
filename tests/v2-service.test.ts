@@ -53,6 +53,42 @@ test("start validates before writing and assigns server-owned workday-scoped sto
   assert.equal(await service.getCurrent("driver-b@example.com"), null);
 });
 
+test("finishing records the ending odometer only when the driver actually entered one", async () => {
+  const { WorkdayService, MemoryWorkdayRepository } = await loadServer();
+  const deps = dependencies();
+  const service = new WorkdayService(new MemoryWorkdayRepository(), deps);
+  let workday = await service.start("driver@example.com", { equipment, stops: [stops[0]] }, "start");
+  const stopId = workday.stops[0].id;
+  const experience = {
+    scores: { yard: 5, staging: 4, staff: 3, waitingTime: 2, bathroomAccess: 1 },
+    waitingCategory: "standard",
+    bathroom: { available: false, condition: null },
+  };
+  await service.recordStopEvent("driver@example.com", stopId, "navigate", "nav");
+  await service.recordStopEvent("driver@example.com", stopId, "arrive", "arrive");
+  await service.recordStopEvent("driver@example.com", stopId, "depart", "depart");
+  await service.publishExperience("driver@example.com", stopId, experience, "publish");
+
+  workday = await service.finish("driver@example.com", workday.id, "finish-with-odometer", "50318");
+  assert.equal(workday.endingOdometer, "50318");
+
+  const second = await service.start("driver-b@example.com", { equipment, stops: [{ ...stops[1], order: 0 }] }, "start-b");
+  const secondStopId = second.stops[0].id;
+  await service.recordStopEvent("driver-b@example.com", secondStopId, "navigate", "nav-b");
+  await service.recordStopEvent("driver-b@example.com", secondStopId, "arrive", "arrive-b");
+  await service.recordStopEvent("driver-b@example.com", secondStopId, "depart", "depart-b");
+  await service.publishExperience("driver-b@example.com", secondStopId, experience, "publish-b");
+  const finishedWithoutOdometer = await service.finish("driver-b@example.com", second.id, "finish-without-odometer");
+  assert.equal(finishedWithoutOdometer.endingOdometer, undefined);
+
+  await assert.rejects(
+    service.start("driver-c@example.com", { equipment, stops: [stops[0]] }, "start-c")
+      .then(day => service.recordStopEvent("driver-c@example.com", day.stops[0].id, "navigate", "nav-c"))
+      .then(() => service.finish("driver-c@example.com", "irrelevant", "finish-c", { not: "a string" })),
+    { name: "ValidationError" },
+  );
+});
+
 test("legal workflow advances only after experience persistence and then finishes", async () => {
   const { WorkdayService, MemoryWorkdayRepository } = await loadServer();
   const deps = dependencies();

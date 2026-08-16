@@ -89,7 +89,10 @@ test("real D1 replays start, events, and publish without duplicate rows", async 
   assert.equal(await db.prepare("SELECT count(*) AS count FROM v2_workdays WHERE id = ? AND state = 'completed'")
     .bind(published.id).first<number>("count"), 1);
   assert.equal(await db.prepare("SELECT count(*) AS count FROM v2_idempotency WHERE driver_id = ? AND idempotency_key = ? AND operation = ?")
-    .bind("driver@example.com", "finish-key", `finish:${published.id}`).first<number>("count"), 1);
+    // The operation string now carries the ending-odometer payload, matching how every other
+    // mutation encodes its payload, so a retry under the same key with a different reading is
+    // still caught by idempotency replay rather than silently applying a new value.
+    .bind("driver@example.com", "finish-key", `finish:${published.id}:`).first<number>("count"), 1);
   const storedFinish = await db.prepare("SELECT aggregate FROM v2_idempotency WHERE driver_id = ? AND idempotency_key = ?")
     .bind("driver@example.com", "finish-key").first<string>("aggregate");
   assert.deepEqual(JSON.parse(storedFinish ?? "null"), finished);
@@ -185,4 +188,22 @@ test("real D1 permits same-place reuse across drivers and a later completed work
   assert.notEqual(later.id, dayA.id);
   assert.equal(await db.prepare("SELECT count(*) AS count FROM v2_stops WHERE provider_id = ?")
     .bind(route[0].providerId).first<number>("count"), 3);
+});
+
+test("real D1 persists the ending odometer on finish and projects it back on read", async t => {
+  const { db, service } = await setup(t);
+  let workday = await service.start("driver@example.com", { equipment, stops: route }, "start-key");
+  const stopId = workday.stops[0].id;
+  workday = await service.recordStopEvent("driver@example.com", stopId, "navigate", "nav");
+  workday = await service.recordStopEvent("driver@example.com", stopId, "arrive", "arrive");
+  workday = await service.recordStopEvent("driver@example.com", stopId, "depart", "depart");
+  workday = await service.publishExperience("driver@example.com", stopId, experience, "publish");
+
+  const finished = await service.finish("driver@example.com", workday.id, "finish", "50318");
+  assert.equal(finished.endingOdometer, "50318");
+  assert.equal(await db.prepare("SELECT ending_odometer FROM v2_workdays WHERE id = ?")
+    .bind(workday.id).first<string>("ending_odometer"), "50318");
+
+  const reread = await service.getCurrent("driver@example.com");
+  assert.equal(reread?.endingOdometer, "50318");
 });

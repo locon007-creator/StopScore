@@ -82,7 +82,7 @@ export function createWorkflowHttpHandlers(dependencies: HttpDependencies) {
           return Response.json({ workday }, { status: 201 });
         }
         if (body.action === "finish") {
-          const workday = await workflow.finish(user.email, body.workdayId, key);
+          const workday = await workflow.finish(user.email, body.workdayId, key, body.endingOdometer);
           return Response.json({ workday });
         }
         throw new ValidationError("Workday action is invalid.");

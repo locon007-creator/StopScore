@@ -35,6 +35,7 @@ type WorkdayRow = {
   trailer_number: string | null;
   trailer_type: Equipment["trailerType"] | null;
   odometer: string;
+  ending_odometer: string | null;
   active_stop_index: number;
   created_at: string;
   updated_at: string;
@@ -221,19 +222,25 @@ export class D1WorkdayRepository implements WorkdayRepository {
     return next;
   }
 
-  async finish(workdayId: string, write: IdempotentWrite): Promise<WorkdayAggregate> {
+  async finish(workdayId: string, write: IdempotentWrite, endingOdometer: string | null): Promise<WorkdayAggregate> {
     const replay = await this.replay(write);
     if (replay) return replay;
     const current = await this.loadAggregate(workdayId, write.driverId);
     if (!current) throw new MissingError("Workday not found.");
-    const next = { ...completeAggregate(current), updatedAt: write.now, completedAt: write.now };
+    const next = {
+      ...completeAggregate(current),
+      updatedAt: write.now,
+      completedAt: write.now,
+      ...(endingOdometer ? { endingOdometer } : {}),
+    };
     const results = await this.batchWithReplay([
       this.db.prepare(
         `UPDATE v2_workdays
-         SET state = 'completed', active_key = NULL, active_stop_index = (SELECT count(*) FROM v2_stops WHERE workday_id = ?), updated_at = ?, completed_at = ?
+         SET state = 'completed', active_key = NULL, active_stop_index = (SELECT count(*) FROM v2_stops WHERE workday_id = ?),
+             ending_odometer = COALESCE(?, ending_odometer), updated_at = ?, completed_at = ?
          WHERE id = ? AND driver_id = ? AND state = 'active'
            AND NOT EXISTS (SELECT 1 FROM v2_stops WHERE workday_id = ? AND state <> 'experience_published')`,
-      ).bind(workdayId, write.now, write.now, workdayId, write.driverId, workdayId),
+      ).bind(workdayId, endingOdometer, write.now, write.now, workdayId, write.driverId, workdayId),
       this.db.prepare(
         `INSERT INTO v2_idempotency (driver_id, idempotency_key, operation, workday_id, aggregate, created_at)
          SELECT ?, ?, ?, id, ?, ? FROM v2_workdays
@@ -262,7 +269,7 @@ export class D1WorkdayRepository implements WorkdayRepository {
   private async loadAggregate(workdayId: string, driverId: string): Promise<WorkdayAggregate | null> {
     const row = await this.db.prepare(
       `SELECT id, state, equipment_type, truck_number, trailer_number, trailer_type, odometer,
-              active_stop_index, created_at, updated_at, completed_at
+              ending_odometer, active_stop_index, created_at, updated_at, completed_at
        FROM v2_workdays WHERE id = ? AND driver_id = ? LIMIT 1`,
     ).bind(workdayId, driverId).first<WorkdayRow>();
     if (!row) return null;
@@ -308,6 +315,7 @@ export class D1WorkdayRepository implements WorkdayRepository {
         state: stop.state,
         ...recordedTimes.get(stop.id),
       })),
+      ...(row.ending_odometer === null ? {} : { endingOdometer: row.ending_odometer }),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       completedAt: row.completed_at,

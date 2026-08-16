@@ -1,6 +1,7 @@
 import {
   STOP_ACTIONS,
   transitionStop,
+  validateEndingOdometer,
   validateEquipment,
   validateExperience,
   validateRoute,
@@ -125,12 +126,14 @@ export class WorkdayService {
     );
   }
 
-  async finish(driver: unknown, workday: unknown, key: unknown) {
+  async finish(driver: unknown, workday: unknown, key: unknown, endingOdometer?: unknown) {
     const driverId = driverIdentity(driver);
     const workdayId = boundedId(workday, "Workday ID");
+    const normalizedOdometer = validateEndingOdometer(endingOdometer);
     return this.repository.finish(
       workdayId,
-      this.write(driverId, key, `finish:${workdayId}`, null),
+      this.write(driverId, key, `finish:${workdayId}:${normalizedOdometer ?? ""}`, null),
+      normalizedOdometer,
     );
   }
 
