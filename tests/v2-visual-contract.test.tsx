@@ -194,7 +194,7 @@ test("approved Work Mode presents street progress, equipment, current and next s
   Object.defineProperty(globalThis, "navigator", { configurable: true, value: { clipboard: { writeText: async () => undefined } } });
   let renderer!: TestRenderer.ReactTestRenderer;
   await act(async () => {
-    renderer = TestRenderer.create(<WorkMode workday={workday} onEvent={async () => workday} />);
+    renderer = TestRenderer.create(<WorkMode workday={workday} onEvent={async () => workday} loadStopKnowledge={async () => null} />);
   });
   const text = visibleText(renderer);
   assert.match(text, /Stop\s+1\s+of\s+2/);

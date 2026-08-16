@@ -3,14 +3,17 @@ import {
   completeAggregate,
   ConflictError,
   MissingError,
+  summarizeExperiences,
   type ExperienceInput,
   type StopAction,
+  type StopKnowledgeSummary,
   type StopState,
   type WorkdayAggregate,
 } from "../domain/workday.ts";
 import type { IdempotentWrite, WorkdayRepository } from "./workday-repository.ts";
 
 type StoredWorkday = { aggregate: WorkdayAggregate; dayDate: string };
+type StoredExperience = { providerId: string; input: ExperienceInput; createdAt: string };
 type Replay = { operation: string; aggregate: WorkdayAggregate };
 
 const clone = <T>(value: T): T => structuredClone(value);
@@ -18,6 +21,7 @@ const clone = <T>(value: T): T => structuredClone(value);
 export class MemoryWorkdayRepository implements WorkdayRepository {
   private readonly workdays = new Map<string, StoredWorkday>();
   private readonly idempotency = new Map<string, Replay>();
+  private readonly experiences: StoredExperience[] = [];
 
   async getCurrent(driverId: string): Promise<WorkdayAggregate | null> {
     const matching = [...this.workdays.values()]
@@ -67,13 +71,22 @@ export class MemoryWorkdayRepository implements WorkdayRepository {
     return this.commitReplay(write, stored.aggregate);
   }
 
-  async publishExperience(stopId: string, _experience: ExperienceInput, write: IdempotentWrite): Promise<WorkdayAggregate> {
+  async publishExperience(stopId: string, experience: ExperienceInput, write: IdempotentWrite): Promise<WorkdayAggregate> {
     const replay = this.replay(write);
     if (replay) return replay;
     const stored = this.ownedByStop(write.driverId, stopId);
     if (stored.aggregate.state !== "active") throw new ConflictError("The workday is not active.");
+    const stop = stored.aggregate.stops.find(item => item.id === stopId);
+    if (stop) this.experiences.push({ providerId: stop.providerId, input: experience, createdAt: write.now });
     stored.aggregate = { ...advanceAfterExperience(stored.aggregate, stopId), updatedAt: write.now };
     return this.commitReplay(write, stored.aggregate);
+  }
+
+  async getStopKnowledge(providerId: string): Promise<StopKnowledgeSummary | null> {
+    const rows = this.experiences
+      .filter(entry => entry.providerId === providerId)
+      .map(entry => ({ scores: entry.input.scores, comment: entry.input.comment, createdAt: entry.createdAt }));
+    return summarizeExperiences(rows);
   }
 
   async finish(workdayId: string, write: IdempotentWrite, endingOdometer: string | null): Promise<WorkdayAggregate> {

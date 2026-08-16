@@ -137,6 +137,7 @@ export const v2Experiences = sqliteTable("v2_experiences", {
   bathroomAvailable: integer("bathroom_available", { mode: "boolean" }).notNull().default(false),
   bathroomCondition: text("bathroom_condition"),
   waitingCategory: text("waiting_category").notNull(),
+  comment: text("comment"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [
   foreignKey({

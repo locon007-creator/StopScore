@@ -33,7 +33,7 @@ test("generated migration is additive and enforces ownership, ordering, and stat
   const files = await migrationFiles();
   const legacyMigrations = files.filter(file => /\/000[0-5]_/.test(file));
   const v2Migrations = files.filter(file => !legacyMigrations.includes(file));
-  assert.equal(v2Migrations.length, 5, "the v2 foundation, bathroom detail, additive equipment, additive trailer, and ending odometer migrations must follow 0005");
+  assert.equal(v2Migrations.length, 6, "the v2 foundation, bathroom detail, additive equipment, additive trailer, ending odometer, and experience comment migrations must follow 0005");
 
   const { db, dispose } = await createTestD1();
   t.after(dispose);

@@ -3,7 +3,7 @@
 import { useEffect, useReducer, useRef, useState } from "react";
 import { ArrowLeft, CheckCircle, Gauge } from "@phosphor-icons/react";
 import type { BathroomCondition, ExperienceInput, ExperienceTopicKey, WorkdayAggregate, WorkdayStop } from "../domain/workday.ts";
-import { EXPERIENCE_CARD_DEFINITIONS, WAITING_OPTIONS, createExperiencePublishSession, createExperienceState, reduceExperienceState, setBathroomResponse, setExperienceScore, setWaitingCategory, validateExperienceDraft } from "../workflow/experience.ts";
+import { EXPERIENCE_CARD_DEFINITIONS, WAITING_OPTIONS, createExperiencePublishSession, createExperienceState, reduceExperienceState, setBathroomResponse, setComment, setExperienceScore, setWaitingCategory, validateExperienceDraft } from "../workflow/experience.ts";
 import { clearExperienceRecovery, createExperienceRecoveryRecord, loadExperienceRecovery, saveExperienceRecovery } from "../workflow/experience-recovery.ts";
 import { formatWaitingDuration, stopWaitingMinutes, waitingCategoryFromMinutes } from "../workflow/model.ts";
 
@@ -48,8 +48,8 @@ export function ExperienceFlow({ workdayId, stop, onPublish }: { workdayId: stri
     setCardIndex(index => Math.min(index + 1, EXPERIENCE_CARD_DEFINITIONS.length));
   };
   const back = () => { dispatch({ type: "clear-error" }); setCardIndex(index => Math.max(0, index - 1)); };
-  const publish = async () => {
-    const validation = validateExperienceDraft(draft);
+  const publish = async (draftOverride?: typeof draft) => {
+    const validation = validateExperienceDraft(draftOverride ?? draft);
     if (!validation.ok) {
       dispatch({ type: "publish-failure", message: validation.message });
       setCardIndex(EXPERIENCE_CARD_DEFINITIONS.findIndex(item => item.key === validation.firstKey));
@@ -62,6 +62,11 @@ export function ExperienceFlow({ workdayId, stop, onPublish }: { workdayId: stri
     } catch (cause) {
       dispatch({ type: "publish-failure", message: cause instanceof Error ? cause.message : "We couldn’t publish your Stop Knowledge. Your answers are saved here." });
     }
+  };
+  const skipComment = () => {
+    const cleared = setComment(draft, "");
+    setDraft(cleared);
+    void publish(cleared);
   };
 
   const headingId = publishStep ? `experience-${stop.id}-publish` : `experience-${stop.id}-${card.key}`;
@@ -93,11 +98,29 @@ export function ExperienceFlow({ workdayId, stop, onPublish }: { workdayId: stri
 
       {card.key === "waitingTime" && measuredMinutes === null ? <fieldset className="v2-waiting-fieldset"><legend>Waiting category</legend><div>{WAITING_OPTIONS.map(option => <label key={option.value}><input type="radio" name="waiting-category" checked={draft.waitingCategory === option.value} onChange={() => { setDraft(setWaitingCategory(draft, option.value)); setCardIndex(4); }} /><span><strong>{option.label} Wait</strong><small>{option.meaning}</small></span></label>)}</div></fieldset> : null}
 
-    </div> : <div className="v2-experience-card v2-publish-card"><div className="v2-topic-symbol"><CheckCircle aria-hidden="true" weight="duotone" /></div><h1 ref={heading} tabIndex={-1} id={headingId}>Ready to Publish</h1><p className="v2-experience-question">Check the five completed topics for {stop.displayName}.</p><ol>{EXPERIENCE_CARD_DEFINITIONS.map(topic => <li key={topic.key}><span>{topic.label}</span><strong>{topic.key === "waitingTime" ? WAITING_OPTIONS.find(option => option.value === draft.waitingCategory)?.label : topic.key === "bathroomAccess" ? (draft.bathroomAnswer === "no" ? "No access" : draft.bathroomCondition?.replace("_", " ")) : `${draft.scores[topic.key] ?? "—"} / 5`}</strong></li>)}</ol></div>}
+    </div> : <div className="v2-experience-card v2-publish-card">
+      <div className="v2-topic-symbol"><CheckCircle aria-hidden="true" weight="duotone" /></div>
+      <h1 ref={heading} tabIndex={-1} id={headingId}>Ready to Publish</h1>
+      <p className="v2-experience-question">Check the five completed topics for {stop.displayName}.</p>
+      <ol>{EXPERIENCE_CARD_DEFINITIONS.map(topic => <li key={topic.key}><span>{topic.label}</span><strong>{topic.key === "waitingTime" ? WAITING_OPTIONS.find(option => option.value === draft.waitingCategory)?.label : topic.key === "bathroomAccess" ? (draft.bathroomAnswer === "no" ? "No access" : draft.bathroomCondition?.replace("_", " ")) : `${draft.scores[topic.key] ?? "—"} / 5`}</strong></li>)}</ol>
+      <label className="v2-quick-comment">
+        <span>Quick Comment (optional)</span>
+        {/* No custom voice button: the device keyboard's own dictation covers this field like any
+            other text input, without adding a microphone permission the shell does not request. */}
+        <textarea
+          value={draft.comment}
+          onChange={event => setDraft(setComment(draft, event.target.value))}
+          maxLength={500}
+          rows={3}
+          placeholder="Add a comment…"
+        />
+      </label>
+    </div>}
 
     {error ? <div className="v2-workflow-error" role="alert"><p>{error}</p>{error.toLowerCase().includes("sign in") || error.toLowerCase().includes("sign-in") ? <a href="/signin-with-chatgpt?return_to=%2F">Sign in again</a> : null}</div> : null}
     <div className="v2-experience-actions">
       {publishStep ? <button className="v2-primary-button" type="button" disabled={status === "publishing"} onClick={() => void publish()}>{status === "publishing" ? "Publishing…" : status === "error" ? "Try Publishing Again" : "Publish Experience"}</button> : null}
+      {publishStep && draft.comment ? <button className="v2-skip-comment" type="button" disabled={status === "publishing"} onClick={skipComment}>Skip Comment</button> : null}
     </div>
   </section>;
 }

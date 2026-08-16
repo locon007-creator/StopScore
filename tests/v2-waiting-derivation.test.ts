@@ -132,3 +132,46 @@ test("total miles come only from two real odometer readings", async () => {
   assert.equal(totalMiles("125560", "125000"), null);
   assert.equal(totalMiles("125560", "not a number"), null);
 });
+
+test("summarizeExperiences aggregates topic scores, an overall score, and recent comments", async () => {
+  const { summarizeExperiences } = await import("../app/v2/domain/workday.ts");
+  const rows = [
+    { scores: { yard: 4, staging: 4, staff: 4, waitingTime: 3, bathroomAccess: 4 }, comment: "Tight yard but well organized.", createdAt: "2026-08-14T09:00:00Z" },
+    { scores: { yard: 4, staging: 3, staff: 5, waitingTime: 2, bathroomAccess: 4 }, comment: null, createdAt: "2026-08-15T09:00:00Z" },
+    { scores: { yard: 5, staging: 4, staff: 4, waitingTime: 4, bathroomAccess: 4 }, comment: "Check-in staff was helpful.", createdAt: "2026-08-16T09:00:00Z" },
+  ];
+  const summary = summarizeExperiences(rows);
+  assert.ok(summary);
+  assert.equal(summary!.experienceCount, 3);
+  assert.deepEqual(summary!.topicScores, { yard: 4, staging: 4, staff: 4, waitingTime: 3, bathroomAccess: 4 });
+  assert.equal(summary!.overallScore, 4);
+  assert.equal(summary!.updatedAt, "2026-08-16T09:00:00Z");
+  // Newest first, and the row with no comment contributes nothing.
+  assert.deepEqual(summary!.comments, ["Check-in staff was helpful.", "Tight yard but well organized."]);
+});
+
+test("summarizeExperiences returns null for a place nobody has published for", async () => {
+  const { summarizeExperiences } = await import("../app/v2/domain/workday.ts");
+  assert.equal(summarizeExperiences([]), null);
+});
+
+test("summarizeExperiences caps comments at five, newest first", async () => {
+  const { summarizeExperiences } = await import("../app/v2/domain/workday.ts");
+  const rows = Array.from({ length: 8 }, (_, index) => ({
+    scores: { yard: 3, staging: 3, staff: 3, waitingTime: 3, bathroomAccess: 3 },
+    comment: `Comment ${index}`,
+    createdAt: `2026-08-${String(10 + index).padStart(2, "0")}T09:00:00Z`,
+  }));
+  const summary = summarizeExperiences(rows);
+  assert.equal(summary!.comments.length, 5);
+  assert.deepEqual(summary!.comments, ["Comment 7", "Comment 6", "Comment 5", "Comment 4", "Comment 3"]);
+});
+
+test("Stop Knowledge's updated label reads relative to the local calendar day", async () => {
+  const { formatUpdatedLabel } = await workflow();
+  const now = new Date("2026-08-16T22:00:00");
+  assert.equal(formatUpdatedLabel(new Date("2026-08-16T06:00:00").toISOString(), now), "Updated today");
+  assert.equal(formatUpdatedLabel(new Date("2026-08-15T23:59:00").toISOString(), now), "Updated yesterday");
+  assert.equal(formatUpdatedLabel(new Date("2026-08-10T09:00:00").toISOString(), now), "Updated Aug 10");
+  assert.equal(formatUpdatedLabel("not-a-time", now), "Updated recently");
+});

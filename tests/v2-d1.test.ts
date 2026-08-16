@@ -207,3 +207,41 @@ test("real D1 persists the ending odometer on finish and projects it back on rea
   const reread = await service.getCurrent("driver@example.com");
   assert.equal(reread?.endingOdometer, "50318");
 });
+
+test("real D1 pools Stop Knowledge across drivers by place, scoped through the caller's own route", async t => {
+  const { deps, service } = await setup(t);
+  const place = { providerId: "osm:node:555", displayName: "Pinnacle Freight Solutions", address: "7425 Industrial Pkwy", type: "delivery", order: 0 };
+
+  let dayA = await service.start("driver-a@example.com", { equipment, stops: [place] }, "a-start");
+  const stopA = dayA.stops[0].id;
+  await service.recordStopEvent("driver-a@example.com", stopA, "navigate", "a-nav");
+  await service.recordStopEvent("driver-a@example.com", stopA, "arrive", "a-arrive");
+  await service.recordStopEvent("driver-a@example.com", stopA, "depart", "a-depart");
+  await service.publishExperience("driver-a@example.com", stopA, {
+    ...experience,
+    scores: { yard: 4, staging: 4, staff: 4, waitingTime: 3, bathroomAccess: 4 },
+    comment: "Tight yard but well organized.",
+  }, "a-publish");
+
+  // A distinct later timestamp so the newest-comment-first ordering is unambiguous rather than
+  // resting on tie-breaking behavior between two rows with an identical created_at.
+  deps.nextDay();
+  let dayC = await service.start("driver-c@example.com", { equipment, stops: [place] }, "c-start");
+  const stopC = dayC.stops[0].id;
+  await service.recordStopEvent("driver-c@example.com", stopC, "navigate", "c-nav");
+  await service.recordStopEvent("driver-c@example.com", stopC, "arrive", "c-arrive");
+  await service.recordStopEvent("driver-c@example.com", stopC, "depart", "c-depart");
+  await service.publishExperience("driver-c@example.com", stopC, {
+    ...experience,
+    scores: { yard: 5, staging: 4, staff: 4, waitingTime: 4, bathroomAccess: 4 },
+    comment: "Check-in staff was helpful.",
+  }, "c-publish");
+
+  const dayB = await service.start("driver-b@example.com", { equipment, stops: [place] }, "b-start");
+  const knowledge = await service.stopKnowledge("driver-b@example.com", dayB.stops[0].id);
+  assert.equal(knowledge?.experienceCount, 2);
+  assert.equal(knowledge?.topicScores.yard, 5);
+  assert.deepEqual(knowledge?.comments, ["Check-in staff was helpful.", "Tight yard but well organized."]);
+
+  await assert.rejects(service.stopKnowledge("driver-b@example.com", stopA), { name: "MissingError" });
+});

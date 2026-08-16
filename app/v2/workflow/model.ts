@@ -97,6 +97,24 @@ export function formatClockTime(iso: string | undefined): string | null {
 }
 
 /**
+ * Relative day label for the last time Stop Knowledge was updated for a place, for example
+ * "Updated today" or "Updated Aug 10". Calendar-day comparison, not a 24-hour window, so an
+ * update from this morning still reads as "today" in the evening.
+ */
+export function formatUpdatedLabel(iso: string, now: Date = new Date()): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return "Updated recently";
+  // Local calendar day, matching how the rest of the app renders dates, so a visit late in the
+  // evening still reads as "today" locally rather than flipping a day early on a UTC boundary.
+  const dayKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  if (dayKey(at) === dayKey(now)) return "Updated today";
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (dayKey(at) === dayKey(yesterday)) return "Updated yesterday";
+  return `Updated ${new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(at)}`;
+}
+
+/**
  * Minutes a driver has been at a stop that has not departed yet, so Work Mode can show elapsed
  * time while the driver is still standing in the yard.
  */

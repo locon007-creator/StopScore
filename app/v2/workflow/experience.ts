@@ -21,6 +21,8 @@ export type ExperienceDraft = {
   waitingCategory: WaitingCategory | null;
   bathroomAnswer: BathroomAnswer | null;
   bathroomCondition: BathroomCondition | null;
+  /** Optional free text on Publish. Always a string in the draft; empty means skipped. */
+  comment: string;
 };
 
 /**
@@ -57,7 +59,11 @@ function assertWholeScore(score: number): number {
 }
 
 export function createExperienceDraft(stopId: string): ExperienceDraft {
-  return { stopId, scores: {}, waitingCategory: null, bathroomAnswer: null, bathroomCondition: null };
+  return { stopId, scores: {}, waitingCategory: null, bathroomAnswer: null, bathroomCondition: null, comment: "" };
+}
+
+export function setComment(draft: ExperienceDraft, comment: string): ExperienceDraft {
+  return { ...draft, comment };
 }
 
 export function setExperienceScore(draft: ExperienceDraft, key: ExperienceTopicKey, score: number): ExperienceDraft {
@@ -125,6 +131,7 @@ export function validateExperienceDraft(draft: ExperienceDraft): ExperienceValid
 
   const available = draft.bathroomAnswer === "yes";
   const scores = { ...draft.scores } as ExperienceScores;
+  const comment = draft.comment.trim();
   return {
     ok: true,
     summary: available && draft.bathroomCondition ? BATHROOM_CONDITION_LABELS[draft.bathroomCondition] : NO_BATHROOM_SUMMARY,
@@ -132,6 +139,7 @@ export function validateExperienceDraft(draft: ExperienceDraft): ExperienceValid
       scores,
       waitingCategory: draft.waitingCategory as WaitingCategory,
       bathroom: { available, condition: available ? draft.bathroomCondition : null },
+      ...(comment ? { comment } : {}),
     },
   };
 }

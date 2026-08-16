@@ -127,5 +127,16 @@ export function createWorkflowHttpHandlers(dependencies: HttpDependencies) {
         return errorResponse(error);
       }
     },
+
+    getStopKnowledge: async (stopId: string) => {
+      const user = await dependencies.authenticate();
+      if (!user) return unauthenticated();
+      try {
+        const knowledge = await (await service()).stopKnowledge(user.email, stopId);
+        return Response.json({ knowledge });
+      } catch (error) {
+        return errorResponse(error);
+      }
+    },
   };
 }

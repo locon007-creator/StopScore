@@ -2,14 +2,19 @@
 
 import { useState } from "react";
 import { BookOpen, Copy, FlagCheckered, Info, NavigationArrow, Truck } from "@phosphor-icons/react";
-import type { StopAction, StopType, WorkdayAggregate } from "../domain/workday.ts";
+import type { StopAction, StopKnowledgeSummary, StopType, WorkdayAggregate } from "../domain/workday.ts";
 import { DROP_HOOK_DETAIL_LABELS, formatClockTime, formatWaitingDuration, getWorkModeAction, minutesSinceArrival, navigationTarget, stopWaitingMinutes } from "../workflow/model.ts";
 import { StopKnowledgePanel } from "./StopKnowledgePanel";
 
 const trailerLabels: Record<string, string> = { dry_van: "Dry Van", reefer: "Reefer", flatbed: "Flatbed", step_deck: "Step Deck", tanker: "Tanker", other: "Other" };
 const stopTypeLabel: Record<StopType, string> = { delivery: "Delivery", pickup: "Pickup", drop_hook: "Drop & Hook", delivery_pickup: "Delivery & Pickup" };
 
-export function WorkMode({ workday, onEvent }: { workday: WorkdayAggregate; onEvent: (stopId: string, action: StopAction) => Promise<WorkdayAggregate> }) {
+export function WorkMode({ workday, onEvent, loadStopKnowledge }: {
+  workday: WorkdayAggregate;
+  onEvent: (stopId: string, action: StopAction) => Promise<WorkdayAggregate>;
+  /** Test seam only; production leaves this unset so the panel uses its own real fetch. */
+  loadStopKnowledge?: (stopId: string) => Promise<StopKnowledgeSummary | null>;
+}) {
   const stop = workday.stops[workday.activeStopIndex];
   const nextStop = workday.stops[workday.activeStopIndex + 1];
   const [busy, setBusy] = useState(false);
@@ -88,6 +93,6 @@ export function WorkMode({ workday, onEvent }: { workday: WorkdayAggregate; onEv
       {legal?.kind === "event" ? <button id={`workmode-${stop.id}-action`} className="v2-primary-button v2-work-action" type="button" disabled={busy} onClick={() => void act()}>{busy ? "Updating…" : legal.label}<NavigationArrow aria-hidden="true" weight="fill" /></button> : null}
       {legal?.kind === "event" && legal.action === "navigate" ? <div className="v2-navigation-boundary"><Info aria-hidden="true" weight="fill" /><p>Opens your map app. StopScore is not a GPS.</p></div> : null}
     </div>
-    {knowledgeOpen ? <StopKnowledgePanel stop={stop} onClose={() => setKnowledgeOpen(false)} /> : null}
+    {knowledgeOpen ? <StopKnowledgePanel stop={stop} onClose={() => setKnowledgeOpen(false)} loadKnowledge={loadStopKnowledge} /> : null}
   </section>;
 }

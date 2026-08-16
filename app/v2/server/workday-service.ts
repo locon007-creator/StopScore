@@ -1,4 +1,5 @@
 import {
+  MissingError,
   STOP_ACTIONS,
   transitionStop,
   validateEndingOdometer,
@@ -135,6 +136,20 @@ export class WorkdayService {
       this.write(driverId, key, `finish:${workdayId}:${normalizedOdometer ?? ""}`, null),
       normalizedOdometer,
     );
+  }
+
+  /**
+   * A driver can only ask about a place that is actually on their own route: stopId resolves to
+   * a providerId only through the caller's own current workday. The knowledge returned then pools
+   * every driver who has published one for that place, which is the entire point.
+   */
+  async stopKnowledge(driver: unknown, stop: unknown) {
+    const driverId = driverIdentity(driver);
+    const stopId = boundedId(stop, "Stop ID");
+    const current = await this.repository.getCurrent(driverId);
+    const owned = current?.stops.find(item => item.id === stopId);
+    if (!owned) throw new MissingError("Stop not found.");
+    return this.repository.getStopKnowledge(owned.providerId);
   }
 
   private write(driverId: string, key: unknown, operationPrefix: string, payload: unknown): IdempotentWrite {

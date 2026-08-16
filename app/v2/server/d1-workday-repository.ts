@@ -3,9 +3,11 @@ import {
   completeAggregate,
   ConflictError,
   MissingError,
+  summarizeExperiences,
   type Equipment,
   type ExperienceInput,
   type StopAction,
+  type StopKnowledgeSummary,
   type StopState,
   type WorkdayAggregate,
   type WorkdayStop,
@@ -43,6 +45,7 @@ type WorkdayRow = {
 };
 
 type StopEventRow = { stop_id: string; action: "arrive" | "depart"; recorded_at: string };
+type ExperienceRow = { yard: number; staging: number; staff: number; waiting_time: number; bathroom_access: number; comment: string | null; created_at: string };
 type StopRow = {
   id: string;
   provider_id: string;
@@ -183,8 +186,8 @@ export class D1WorkdayRepository implements WorkdayRepository {
     const score = experience.scores;
     const results = await this.batchWithReplay([
       this.db.prepare(
-        `INSERT INTO v2_experiences (id, workday_id, stop_id, driver_id, yard, staging, staff, waiting_time, bathroom_access, bathroom_available, bathroom_condition, waiting_category, created_at)
-         SELECT ?, s.workday_id, s.id, s.driver_id, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        `INSERT INTO v2_experiences (id, workday_id, stop_id, driver_id, yard, staging, staff, waiting_time, bathroom_access, bathroom_available, bathroom_condition, waiting_category, comment, created_at)
+         SELECT ?, s.workday_id, s.id, s.driver_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
          FROM v2_stops s
          JOIN v2_workdays w ON w.id = s.workday_id AND w.driver_id = s.driver_id
          WHERE s.id = ? AND s.driver_id = ? AND s.state = 'departed' AND s.stop_order = w.active_stop_index
@@ -200,6 +203,7 @@ export class D1WorkdayRepository implements WorkdayRepository {
         experience.bathroom.available ? 1 : 0,
         experience.bathroom.condition,
         experience.waitingCategory,
+        experience.comment ?? null,
         write.now,
         stopId,
         write.driverId,
@@ -264,6 +268,32 @@ export class D1WorkdayRepository implements WorkdayRepository {
     const aggregate = await this.loadAggregate(row.workday_id, driverId);
     if (!aggregate) throw new MissingError("Stop not found.");
     return aggregate;
+  }
+
+  /**
+   * Cross-driver by design: this is not scoped to any single driver's workdays, only to a place.
+   * The service resolves stopId to providerId through the caller's own driver-scoped workday
+   * first, so a driver can only ask about a place that is actually on their route, but the
+   * knowledge returned pools every driver who has ever published one there.
+   */
+  async getStopKnowledge(providerId: string): Promise<StopKnowledgeSummary | null> {
+    const rows = await this.db.prepare(
+      `SELECT e.yard, e.staging, e.staff, e.waiting_time, e.bathroom_access, e.comment, e.created_at
+       FROM v2_experiences e
+       JOIN v2_stops s ON s.id = e.stop_id
+       WHERE s.provider_id = ?`,
+    ).bind(providerId).all<ExperienceRow>();
+    return summarizeExperiences(rows.results.map(row => ({
+      scores: {
+        yard: row.yard,
+        staging: row.staging,
+        staff: row.staff,
+        waitingTime: row.waiting_time,
+        bathroomAccess: row.bathroom_access,
+      },
+      comment: row.comment,
+      createdAt: row.created_at,
+    })));
   }
 
   private async loadAggregate(workdayId: string, driverId: string): Promise<WorkdayAggregate | null> {

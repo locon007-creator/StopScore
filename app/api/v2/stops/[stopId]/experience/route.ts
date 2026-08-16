@@ -6,3 +6,8 @@ export async function POST(request: Request, context: RouteContext) {
   const { stopId } = await context.params;
   return workflowHttpHandlers.postExperience(request, stopId);
 }
+
+export async function GET(_request: Request, context: RouteContext) {
+  const { stopId } = await context.params;
+  return workflowHttpHandlers.getStopKnowledge(stopId);
+}
