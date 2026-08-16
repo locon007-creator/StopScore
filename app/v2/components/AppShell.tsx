@@ -5,6 +5,7 @@ import { GearSix, GlobeHemisphereWest, SignIn } from "@phosphor-icons/react";
 import { useTheme } from "../../theme";
 import type { SessionState } from "../useWorkday";
 import { SettingsPanel } from "./SettingsPanel";
+import { driverFirstName } from "../workflow/model.ts";
 import { SavedItemsPanel } from "./SavedItemsPanel";
 
 export function AppShell({ session, children }: { session: SessionState; children: ReactNode }) {
@@ -40,7 +41,7 @@ export function AppShell({ session, children }: { session: SessionState; childre
         </div>
       </header>
       <main className="v2-workspace">{children}</main>
-      {supportView === "settings" ? <SettingsPanel mode={mode === "auto" ? resolvedMode : mode} onMode={setMode} onOpenSaved={() => setSupportView("saved")} onClose={() => setSupportView(null)} /> : null}
+      {supportView === "settings" ? <SettingsPanel mode={mode === "auto" ? resolvedMode : mode} onMode={setMode} onOpenSaved={() => setSupportView("saved")} onClose={() => setSupportView(null)} driverName={session.status === "authenticated" ? driverFirstName(session.user.displayName) : null} /> : null}
       {supportView === "saved" ? <SavedItemsPanel onClose={() => setSupportView("settings")} /> : null}
     </div>
   );

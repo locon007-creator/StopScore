@@ -62,3 +62,7 @@
 .v2-active-home-card span{display:flex;align-items:flex-start;gap:6px;font-size:.86rem;color:var(--color-secondary-text)}
 .v2-active-home-card span svg{flex:none;margin-top:2px}
 .v2-active-home-card small{font-size:.8rem;color:var(--color-secondary-text);font-variant-numeric:tabular-nums}
+.v2-shift-heading{font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--color-accent);margin:18px 0 8px}
+.v2-shift-timeline b{text-align:right;font-variant-numeric:tabular-nums;line-height:1.35;white-space:nowrap}
+.v2-shift-timeline .v2-shift-waited{color:var(--color-accent)}
+.v2-shift-anchor span{background:var(--color-accent)}
