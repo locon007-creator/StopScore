@@ -89,7 +89,10 @@ test("real D1 replays start, events, and publish without duplicate rows", async 
   assert.equal(await db.prepare("SELECT count(*) AS count FROM v2_workdays WHERE id = ? AND state = 'completed'")
     .bind(published.id).first<number>("count"), 1);
   assert.equal(await db.prepare("SELECT count(*) AS count FROM v2_idempotency WHERE driver_id = ? AND idempotency_key = ? AND operation = ?")
-    .bind("driver@example.com", "finish-key", `finish:${published.id}`).first<number>("count"), 1);
+    // The operation string now carries the ending-odometer payload, matching how every other
+    // mutation encodes its payload, so a retry under the same key with a different reading is
+    // still caught by idempotency replay rather than silently applying a new value.
+    .bind("driver@example.com", "finish-key", `finish:${published.id}:`).first<number>("count"), 1);
   const storedFinish = await db.prepare("SELECT aggregate FROM v2_idempotency WHERE driver_id = ? AND idempotency_key = ?")
     .bind("driver@example.com", "finish-key").first<string>("aggregate");
   assert.deepEqual(JSON.parse(storedFinish ?? "null"), finished);
@@ -185,4 +188,60 @@ test("real D1 permits same-place reuse across drivers and a later completed work
   assert.notEqual(later.id, dayA.id);
   assert.equal(await db.prepare("SELECT count(*) AS count FROM v2_stops WHERE provider_id = ?")
     .bind(route[0].providerId).first<number>("count"), 3);
+});
+
+test("real D1 persists the ending odometer on finish and projects it back on read", async t => {
+  const { db, service } = await setup(t);
+  let workday = await service.start("driver@example.com", { equipment, stops: route }, "start-key");
+  const stopId = workday.stops[0].id;
+  workday = await service.recordStopEvent("driver@example.com", stopId, "navigate", "nav");
+  workday = await service.recordStopEvent("driver@example.com", stopId, "arrive", "arrive");
+  workday = await service.recordStopEvent("driver@example.com", stopId, "depart", "depart");
+  workday = await service.publishExperience("driver@example.com", stopId, experience, "publish");
+
+  const finished = await service.finish("driver@example.com", workday.id, "finish", "50318");
+  assert.equal(finished.endingOdometer, "50318");
+  assert.equal(await db.prepare("SELECT ending_odometer FROM v2_workdays WHERE id = ?")
+    .bind(workday.id).first<string>("ending_odometer"), "50318");
+
+  const reread = await service.getCurrent("driver@example.com");
+  assert.equal(reread?.endingOdometer, "50318");
+});
+
+test("real D1 pools Stop Knowledge across drivers by place, scoped through the caller's own route", async t => {
+  const { deps, service } = await setup(t);
+  const place = { providerId: "osm:node:555", displayName: "Pinnacle Freight Solutions", address: "7425 Industrial Pkwy", type: "delivery", order: 0 };
+
+  let dayA = await service.start("driver-a@example.com", { equipment, stops: [place] }, "a-start");
+  const stopA = dayA.stops[0].id;
+  await service.recordStopEvent("driver-a@example.com", stopA, "navigate", "a-nav");
+  await service.recordStopEvent("driver-a@example.com", stopA, "arrive", "a-arrive");
+  await service.recordStopEvent("driver-a@example.com", stopA, "depart", "a-depart");
+  await service.publishExperience("driver-a@example.com", stopA, {
+    ...experience,
+    scores: { yard: 4, staging: 4, staff: 4, waitingTime: 3, bathroomAccess: 4 },
+    comment: "Tight yard but well organized.",
+  }, "a-publish");
+
+  // A distinct later timestamp so the newest-comment-first ordering is unambiguous rather than
+  // resting on tie-breaking behavior between two rows with an identical created_at.
+  deps.nextDay();
+  let dayC = await service.start("driver-c@example.com", { equipment, stops: [place] }, "c-start");
+  const stopC = dayC.stops[0].id;
+  await service.recordStopEvent("driver-c@example.com", stopC, "navigate", "c-nav");
+  await service.recordStopEvent("driver-c@example.com", stopC, "arrive", "c-arrive");
+  await service.recordStopEvent("driver-c@example.com", stopC, "depart", "c-depart");
+  await service.publishExperience("driver-c@example.com", stopC, {
+    ...experience,
+    scores: { yard: 5, staging: 4, staff: 4, waitingTime: 4, bathroomAccess: 4 },
+    comment: "Check-in staff was helpful.",
+  }, "c-publish");
+
+  const dayB = await service.start("driver-b@example.com", { equipment, stops: [place] }, "b-start");
+  const knowledge = await service.stopKnowledge("driver-b@example.com", dayB.stops[0].id);
+  assert.equal(knowledge?.experienceCount, 2);
+  assert.equal(knowledge?.topicScores.yard, 5);
+  assert.deepEqual(knowledge?.comments, ["Check-in staff was helpful.", "Tight yard but well organized."]);
+
+  await assert.rejects(service.stopKnowledge("driver-b@example.com", stopA), { name: "MissingError" });
 });

@@ -42,6 +42,10 @@ export type RouteStopInput = {
 export type WorkdayStop = RouteStopInput & {
   id: string;
   state: StopState;
+  /** Recorded when the driver pressed Arrive. Absent until then. */
+  arrivedAt?: string;
+  /** Recorded when the driver pressed Depart. Absent until then. */
+  departedAt?: string;
 };
 
 export type WorkdayAggregate = {
@@ -53,9 +57,25 @@ export type WorkdayAggregate = {
   createdAt?: string;
   updatedAt?: string;
   completedAt?: string | null;
+  /** Recorded when the driver finishes the day. Absent until then, and finishing does not
+   *  require one: StopScore has no source for an ending reading and will not guess it. */
+  endingOdometer?: string;
 };
 
 export type ExperienceScores = Record<ExperienceTopicKey, number>;
+
+/**
+ * The cross-driver, cross-day rollup for a place. Never carries a stopId, workdayId, or driverId
+ * so a driver can never learn another driver's specific visit history from it — only statistics
+ * and the free-text comments drivers chose to publish.
+ */
+export type StopKnowledgeSummary = {
+  experienceCount: number;
+  overallScore: number;
+  topicScores: ExperienceScores;
+  updatedAt: string;
+  comments: string[];
+};
 
 export type ExperienceInput = {
   scores: ExperienceScores;
@@ -64,6 +84,8 @@ export type ExperienceInput = {
     available: boolean;
     condition: BathroomCondition | null;
   };
+  /** Optional free text a driver adds when publishing. Absent, not empty string, when skipped. */
+  comment?: string;
 };
 
 export class ValidationError extends Error {
@@ -104,6 +126,16 @@ function requireBoundedText(value: unknown, label: string, maximum: number): str
 
 export function isCanonicalProviderId(value: unknown): value is string {
   return typeof value === "string" && canonicalProviderId.test(value);
+}
+
+/**
+ * Ending odometer is optional: a driver can finish a day without recording one, and Total Miles
+ * simply does not appear rather than being computed from a guess. When provided it follows the
+ * same bounded-text rule as the starting odometer.
+ */
+export function validateEndingOdometer(value: unknown): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  return requireBoundedText(value, "Ending odometer", 80);
 }
 
 export function validateEquipment(value: unknown): Equipment {
@@ -205,10 +237,50 @@ export function validateExperience(value: unknown): ExperienceInput {
   if (!bathroom.available && bathroom.condition !== null) {
     throw new ValidationError("Bathroom condition must be empty when no bathroom is available.");
   }
+  let comment: string | undefined;
+  if (input.comment !== undefined && input.comment !== null) {
+    if (typeof input.comment !== "string") throw new ValidationError("Comment is invalid.");
+    const trimmed = input.comment.trim();
+    if (trimmed.length > 500) throw new ValidationError("Comment must be 500 characters or fewer.");
+    if (trimmed) comment = trimmed;
+  }
   return {
     scores: normalizedScores,
     waitingCategory: input.waitingCategory as WaitingCategory,
     bathroom: { available: bathroom.available, condition: bathroom.condition as BathroomCondition | null },
+    ...(comment ? { comment } : {}),
+  };
+}
+
+/**
+ * The single aggregation algorithm both repositories share, so a memory-backed unit test and a
+ * real D1 test exercise identical rounding rather than two implementations that could drift.
+ * Each topic is averaged independently and rounded for display; the overall score is the mean of
+ * the five unrounded topic averages, rounded once, so it does not compound five separate roundings.
+ */
+export function summarizeExperiences(
+  rows: Array<{ scores: ExperienceScores; comment?: string | null; createdAt: string }>,
+): StopKnowledgeSummary | null {
+  if (rows.length === 0) return null;
+  const topicScores = {} as ExperienceScores;
+  let overallSum = 0;
+  for (const topic of EXPERIENCE_TOPICS) {
+    const mean = rows.reduce((sum, row) => sum + row.scores[topic.key], 0) / rows.length;
+    topicScores[topic.key] = Math.round(mean);
+    overallSum += mean;
+  }
+  const updatedAt = rows.reduce((latest, row) => (row.createdAt > latest ? row.createdAt : latest), rows[0].createdAt);
+  const comments = rows
+    .filter((row): row is typeof row & { comment: string } => typeof row.comment === "string" && row.comment.length > 0)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .slice(0, 5)
+    .map(row => row.comment);
+  return {
+    experienceCount: rows.length,
+    overallScore: Math.round(overallSum / EXPERIENCE_TOPICS.length),
+    topicScores,
+    updatedAt,
+    comments,
   };
 }
 

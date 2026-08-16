@@ -53,6 +53,80 @@ test("start validates before writing and assigns server-owned workday-scoped sto
   assert.equal(await service.getCurrent("driver-b@example.com"), null);
 });
 
+test("finishing records the ending odometer only when the driver actually entered one", async () => {
+  const { WorkdayService, MemoryWorkdayRepository } = await loadServer();
+  const deps = dependencies();
+  const service = new WorkdayService(new MemoryWorkdayRepository(), deps);
+  let workday = await service.start("driver@example.com", { equipment, stops: [stops[0]] }, "start");
+  const stopId = workday.stops[0].id;
+  const experience = {
+    scores: { yard: 5, staging: 4, staff: 3, waitingTime: 2, bathroomAccess: 1 },
+    waitingCategory: "standard",
+    bathroom: { available: false, condition: null },
+  };
+  await service.recordStopEvent("driver@example.com", stopId, "navigate", "nav");
+  await service.recordStopEvent("driver@example.com", stopId, "arrive", "arrive");
+  await service.recordStopEvent("driver@example.com", stopId, "depart", "depart");
+  await service.publishExperience("driver@example.com", stopId, experience, "publish");
+
+  workday = await service.finish("driver@example.com", workday.id, "finish-with-odometer", "50318");
+  assert.equal(workday.endingOdometer, "50318");
+
+  const second = await service.start("driver-b@example.com", { equipment, stops: [{ ...stops[1], order: 0 }] }, "start-b");
+  const secondStopId = second.stops[0].id;
+  await service.recordStopEvent("driver-b@example.com", secondStopId, "navigate", "nav-b");
+  await service.recordStopEvent("driver-b@example.com", secondStopId, "arrive", "arrive-b");
+  await service.recordStopEvent("driver-b@example.com", secondStopId, "depart", "depart-b");
+  await service.publishExperience("driver-b@example.com", secondStopId, experience, "publish-b");
+  const finishedWithoutOdometer = await service.finish("driver-b@example.com", second.id, "finish-without-odometer");
+  assert.equal(finishedWithoutOdometer.endingOdometer, undefined);
+
+  await assert.rejects(
+    service.start("driver-c@example.com", { equipment, stops: [stops[0]] }, "start-c")
+      .then(day => service.recordStopEvent("driver-c@example.com", day.stops[0].id, "navigate", "nav-c"))
+      .then(() => service.finish("driver-c@example.com", "irrelevant", "finish-c", { not: "a string" })),
+    { name: "ValidationError" },
+  );
+});
+
+test("stopKnowledge pools every driver who has published for a place, scoped only through the caller's own route", async () => {
+  const { WorkdayService, MemoryWorkdayRepository } = await loadServer();
+  const repo = new MemoryWorkdayRepository();
+  const service = new WorkdayService(repo, dependencies());
+  const place = { providerId: "osm:node:555", displayName: "Pinnacle Freight Solutions", address: "7425 Industrial Pkwy", type: "delivery", order: 0 };
+
+  // Driver A visits the place and publishes with a comment.
+  let dayA = await service.start("driver-a@example.com", { equipment, stops: [place] }, "a-start");
+  const stopA = dayA.stops[0].id;
+  await service.recordStopEvent("driver-a@example.com", stopA, "navigate", "a-nav");
+  await service.recordStopEvent("driver-a@example.com", stopA, "arrive", "a-arrive");
+  await service.recordStopEvent("driver-a@example.com", stopA, "depart", "a-depart");
+  await service.publishExperience("driver-a@example.com", stopA, {
+    scores: { yard: 4, staging: 4, staff: 4, waitingTime: 3, bathroomAccess: 4 },
+    waitingCategory: "standard",
+    bathroom: { available: true, condition: "clean" },
+    comment: "Tight yard but well organized.",
+  }, "a-publish");
+
+  // Driver B has that same place on today's route and asks about it before departing.
+  const dayB = await service.start("driver-b@example.com", { equipment, stops: [place] }, "b-start");
+  const stopB = dayB.stops[0].id;
+  const knowledge = await service.stopKnowledge("driver-b@example.com", stopB);
+  assert.equal(knowledge?.experienceCount, 1);
+  assert.equal(knowledge?.overallScore, 4);
+  assert.deepEqual(knowledge?.comments, ["Tight yard but well organized."]);
+
+  // A driver cannot ask about a stop that is not on their own route.
+  await assert.rejects(service.stopKnowledge("driver-b@example.com", stopA), { name: "MissingError" });
+
+  // A place nobody has visited yet returns null, not an empty-but-present summary.
+  const untouched = await service.start("driver-c@example.com", {
+    equipment,
+    stops: [{ ...place, providerId: "osm:node:999" }],
+  }, "c-start");
+  assert.equal(await service.stopKnowledge("driver-c@example.com", untouched.stops[0].id), null);
+});
+
 test("legal workflow advances only after experience persistence and then finishes", async () => {
   const { WorkdayService, MemoryWorkdayRepository } = await loadServer();
   const deps = dependencies();

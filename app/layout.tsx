@@ -35,7 +35,7 @@ export default function RootLayout({
   const themeBootScript = `(() => {
     try {
       const stored = JSON.parse(localStorage.getItem("stopscore-driver-preferences") || "{}");
-      const preference = ["auto", "light", "dark"].includes(stored.themeMode) ? stored.themeMode : "auto";
+      const preference = ["auto", "light", "dark"].includes(stored.themeMode) ? stored.themeMode : "dark";
       const systemDark = typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches;
       const mode = preference === "auto" ? (systemDark ? "dark" : "light") : preference;
       document.documentElement.dataset.themePreference = preference;
@@ -43,16 +43,15 @@ export default function RootLayout({
       document.documentElement.style.colorScheme = mode;
       document.querySelector('meta[name="theme-color"]')?.setAttribute("content", mode === "dark" ? "#050505" : "#ffffff");
     } catch {
-      const mode = typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-      document.documentElement.dataset.themePreference = "auto";
-      document.documentElement.dataset.theme = mode;
-      document.documentElement.style.colorScheme = mode;
-      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", mode === "dark" ? "#050505" : "#ffffff");
+      document.documentElement.dataset.themePreference = "dark";
+      document.documentElement.dataset.theme = "dark";
+      document.documentElement.style.colorScheme = "dark";
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", "#050505");
     }
   })();`;
 
   return (
-    <html lang="en" data-theme="dark" data-theme-preference="auto" suppressHydrationWarning>
+    <html lang="en" data-theme="dark" data-theme-preference="dark" suppressHydrationWarning>
       <head>
         <meta name="theme-color" content="#050505" />
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />

@@ -67,7 +67,7 @@ test("Stop Knowledge keeps the exact five-card order and validates scores, waiti
     ["bathroomAccess", "Bathroom Access"],
   ]);
   assert.deepEqual(WAITING_OPTIONS.map((option: { label: string; meaning: string }) => [option.label, option.meaning]), [
-    ["Quick", "15–45 min"], ["Standard", "30 min–1 hr"], ["Long", "1–2 hr"], ["Extremely Delayed", "2+ hr"],
+    ["Quick", "Under 45 min"], ["Standard", "45 min–2 hr"], ["Long", "2–4 hr"], ["Extremely Delayed", "4+ hr"],
   ]);
 
   let draft = createExperienceDraft("stop-1");

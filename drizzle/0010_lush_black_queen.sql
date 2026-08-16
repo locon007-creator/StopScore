@@ -1,0 +1,1 @@
+ALTER TABLE `v2_workdays` ADD `ending_odometer` text;

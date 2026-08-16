@@ -82,7 +82,7 @@ export function createWorkflowHttpHandlers(dependencies: HttpDependencies) {
           return Response.json({ workday }, { status: 201 });
         }
         if (body.action === "finish") {
-          const workday = await workflow.finish(user.email, body.workdayId, key);
+          const workday = await workflow.finish(user.email, body.workdayId, key, body.endingOdometer);
           return Response.json({ workday });
         }
         throw new ValidationError("Workday action is invalid.");
@@ -123,6 +123,17 @@ export function createWorkflowHttpHandlers(dependencies: HttpDependencies) {
           request.headers.get("Idempotency-Key"),
         );
         return Response.json({ workday });
+      } catch (error) {
+        return errorResponse(error);
+      }
+    },
+
+    getStopKnowledge: async (stopId: string) => {
+      const user = await dependencies.authenticate();
+      if (!user) return unauthenticated();
+      try {
+        const knowledge = await (await service()).stopKnowledge(user.email, stopId);
+        return Response.json({ knowledge });
       } catch (error) {
         return errorResponse(error);
       }

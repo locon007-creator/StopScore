@@ -64,6 +64,7 @@ export const v2Workdays = sqliteTable("v2_workdays", {
   trailerNumber: text("trailer_number"),
   trailerType: text("trailer_type"),
   odometer: text("odometer").notNull(),
+  endingOdometer: text("ending_odometer"),
   activeStopIndex: integer("active_stop_index").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -136,6 +137,7 @@ export const v2Experiences = sqliteTable("v2_experiences", {
   bathroomAvailable: integer("bathroom_available", { mode: "boolean" }).notNull().default(false),
   bathroomCondition: text("bathroom_condition"),
   waitingCategory: text("waiting_category").notNull(),
+  comment: text("comment"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [
   foreignKey({

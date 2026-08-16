@@ -1,0 +1,177 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+
+async function workflow() {
+  return import("../app/v2/workflow/model.ts");
+}
+
+const stop = (arrivedAt?: string, departedAt?: string) => ({
+  id: "stop-1",
+  providerId: "osm:node:1",
+  displayName: "FedEx Ground",
+  address: "1234 Commerce Blvd, Memphis, TN 38118",
+  type: "delivery" as const,
+  order: 0,
+  state: "departed" as const,
+  ...(arrivedAt ? { arrivedAt } : {}),
+  ...(departedAt ? { departedAt } : {}),
+});
+
+test("waiting time is measured from the recorded arrive and depart", async () => {
+  const { stopWaitingMinutes } = await workflow();
+  assert.equal(stopWaitingMinutes(stop("2026-05-16T09:42:00Z", "2026-05-16T10:00:00Z")), 18);
+  assert.equal(stopWaitingMinutes(stop("2026-05-16T09:42:00Z", "2026-05-16T12:12:00Z")), 150);
+});
+
+test("a stop that has not departed yet has no measured waiting time", async () => {
+  const { stopWaitingMinutes, derivedWaitingCategory } = await workflow();
+  assert.equal(stopWaitingMinutes(stop("2026-05-16T09:42:00Z")), null);
+  assert.equal(stopWaitingMinutes(stop()), null);
+  assert.equal(derivedWaitingCategory(stop("2026-05-16T09:42:00Z")), null);
+});
+
+test("out of order or unparseable timestamps never produce a waiting time", async () => {
+  const { stopWaitingMinutes } = await workflow();
+  assert.equal(stopWaitingMinutes(stop("2026-05-16T10:00:00Z", "2026-05-16T09:42:00Z")), null);
+  assert.equal(stopWaitingMinutes(stop("not-a-time", "2026-05-16T09:42:00Z")), null);
+});
+
+test("measured minutes map onto the waiting bands", async () => {
+  const { waitingCategoryFromMinutes } = await workflow();
+  assert.equal(waitingCategoryFromMinutes(0), "quick");
+  assert.equal(waitingCategoryFromMinutes(44), "quick");
+  assert.equal(waitingCategoryFromMinutes(45), "standard");
+  assert.equal(waitingCategoryFromMinutes(119), "standard");
+  assert.equal(waitingCategoryFromMinutes(120), "long");
+  assert.equal(waitingCategoryFromMinutes(239), "long");
+  assert.equal(waitingCategoryFromMinutes(240), "extremely_delayed");
+  assert.equal(waitingCategoryFromMinutes(600), "extremely_delayed");
+});
+
+test("the grade a stop earns for waiting follows from the measured duration", async () => {
+  const { derivedWaitingCategory } = await workflow();
+  const { WAITING_CATEGORY_SCORES } = await import("../app/v2/workflow/experience.ts");
+  const measured = (minutes: number) =>
+    stop("2026-05-16T09:00:00Z", new Date(Date.parse("2026-05-16T09:00:00Z") + minutes * 60000).toISOString());
+
+  assert.equal(WAITING_CATEGORY_SCORES[derivedWaitingCategory(measured(18))!], 5);
+  assert.equal(WAITING_CATEGORY_SCORES[derivedWaitingCategory(measured(90))!], 4);
+  assert.equal(WAITING_CATEGORY_SCORES[derivedWaitingCategory(measured(180))!], 2);
+  assert.equal(WAITING_CATEGORY_SCORES[derivedWaitingCategory(measured(330))!], 1);
+});
+
+test("a measured wait reads back to the driver in plain units", async () => {
+  const { formatWaitingDuration } = await workflow();
+  assert.equal(formatWaitingDuration(18), "18 min");
+  assert.equal(formatWaitingDuration(60), "1 hr");
+  assert.equal(formatWaitingDuration(75), "1 hr 15 min");
+});
+
+test("recording arrive and depart stamps the stop the driver acted on", async () => {
+  const { MemoryWorkdayRepository } = await import("../app/v2/server/memory-workday-repository.ts");
+  const repository = new MemoryWorkdayRepository();
+  const write = (key: string, now: string) => ({ driverId: "driver-1", key, operation: "test", now });
+  const aggregate = {
+    id: "day-1",
+    state: "active" as const,
+    activeStopIndex: 0,
+    equipment: { type: "tractor" as const, truckNumber: "124", trailerType: "dry_van" as const, odometer: "125560" },
+    stops: [
+      { ...stop(), id: "stop-1", state: "pending" as const },
+      { ...stop(), id: "stop-2", providerId: "osm:node:2", displayName: "ABC Manufacturing", address: "567 Industrial Dr", order: 1, state: "pending" as const },
+    ],
+  };
+  await repository.start(aggregate, "2026-05-16", write("start-1", "2026-05-16T09:00:00Z"));
+
+  await repository.recordStopEvent("stop-1", "navigate", "pending", "navigating", write("nav-1", "2026-05-16T09:20:00Z"));
+  await repository.recordStopEvent("stop-1", "arrive", "navigating", "arrived", write("arr-1", "2026-05-16T09:42:00Z"));
+  const departed = await repository.recordStopEvent("stop-1", "depart", "arrived", "departed", write("dep-1", "2026-05-16T10:00:00Z"));
+
+  const { stopWaitingMinutes, derivedWaitingCategory } = await workflow();
+  assert.equal(departed.stops[0].arrivedAt, "2026-05-16T09:42:00Z");
+  assert.equal(departed.stops[0].departedAt, "2026-05-16T10:00:00Z");
+  assert.equal(stopWaitingMinutes(departed.stops[0]), 18);
+  assert.equal(derivedWaitingCategory(departed.stops[0]), "quick");
+  assert.equal(departed.stops[1].arrivedAt, undefined);
+  assert.equal(departed.stops[1].departedAt, undefined);
+});
+
+test("a driver is greeted by name only when a real name is known", async () => {
+  const { driverFirstName } = await workflow();
+  assert.equal(driverFirstName("Jose Martinez"), "Jose");
+  assert.equal(driverFirstName("  Jose  "), "Jose");
+  assert.equal(driverFirstName("jose@stopscore.test"), null);
+  assert.equal(driverFirstName(""), null);
+  assert.equal(driverFirstName(null), null);
+  assert.equal(driverFirstName(undefined), null);
+});
+
+test("a recorded arrival reads back as wall-clock time", async () => {
+  const { formatClockTime } = await workflow();
+  assert.match(formatClockTime("2026-05-16T09:42:00Z") ?? "", /\d{1,2}:\d{2}\s?(AM|PM)/);
+  assert.equal(formatClockTime(undefined), null);
+  assert.equal(formatClockTime("not-a-time"), null);
+});
+
+test("time at a stop keeps counting until the driver departs", async () => {
+  const { minutesSinceArrival } = await workflow();
+  const arrived = "2026-05-16T09:42:00Z";
+  const now = Date.parse("2026-05-16T10:00:00Z");
+  assert.equal(minutesSinceArrival(stop(arrived), now), 18);
+  assert.equal(minutesSinceArrival(stop(arrived, "2026-05-16T10:00:00Z"), now), null);
+  assert.equal(minutesSinceArrival(stop(), now), null);
+});
+
+test("total miles come only from two real odometer readings", async () => {
+  const { totalMiles } = await workflow();
+  assert.equal(totalMiles("125560", "125742"), 182);
+  assert.equal(totalMiles("125,560", "125,742 MI"), 182);
+  assert.equal(totalMiles("125560", null), null);
+  assert.equal(totalMiles("125560", undefined), null);
+  assert.equal(totalMiles("125560", ""), null);
+  assert.equal(totalMiles("125560", "125000"), null);
+  assert.equal(totalMiles("125560", "not a number"), null);
+});
+
+test("summarizeExperiences aggregates topic scores, an overall score, and recent comments", async () => {
+  const { summarizeExperiences } = await import("../app/v2/domain/workday.ts");
+  const rows = [
+    { scores: { yard: 4, staging: 4, staff: 4, waitingTime: 3, bathroomAccess: 4 }, comment: "Tight yard but well organized.", createdAt: "2026-08-14T09:00:00Z" },
+    { scores: { yard: 4, staging: 3, staff: 5, waitingTime: 2, bathroomAccess: 4 }, comment: null, createdAt: "2026-08-15T09:00:00Z" },
+    { scores: { yard: 5, staging: 4, staff: 4, waitingTime: 4, bathroomAccess: 4 }, comment: "Check-in staff was helpful.", createdAt: "2026-08-16T09:00:00Z" },
+  ];
+  const summary = summarizeExperiences(rows);
+  assert.ok(summary);
+  assert.equal(summary!.experienceCount, 3);
+  assert.deepEqual(summary!.topicScores, { yard: 4, staging: 4, staff: 4, waitingTime: 3, bathroomAccess: 4 });
+  assert.equal(summary!.overallScore, 4);
+  assert.equal(summary!.updatedAt, "2026-08-16T09:00:00Z");
+  // Newest first, and the row with no comment contributes nothing.
+  assert.deepEqual(summary!.comments, ["Check-in staff was helpful.", "Tight yard but well organized."]);
+});
+
+test("summarizeExperiences returns null for a place nobody has published for", async () => {
+  const { summarizeExperiences } = await import("../app/v2/domain/workday.ts");
+  assert.equal(summarizeExperiences([]), null);
+});
+
+test("summarizeExperiences caps comments at five, newest first", async () => {
+  const { summarizeExperiences } = await import("../app/v2/domain/workday.ts");
+  const rows = Array.from({ length: 8 }, (_, index) => ({
+    scores: { yard: 3, staging: 3, staff: 3, waitingTime: 3, bathroomAccess: 3 },
+    comment: `Comment ${index}`,
+    createdAt: `2026-08-${String(10 + index).padStart(2, "0")}T09:00:00Z`,
+  }));
+  const summary = summarizeExperiences(rows);
+  assert.equal(summary!.comments.length, 5);
+  assert.deepEqual(summary!.comments, ["Comment 7", "Comment 6", "Comment 5", "Comment 4", "Comment 3"]);
+});
+
+test("Stop Knowledge's updated label reads relative to the local calendar day", async () => {
+  const { formatUpdatedLabel } = await workflow();
+  const now = new Date("2026-08-16T22:00:00");
+  assert.equal(formatUpdatedLabel(new Date("2026-08-16T06:00:00").toISOString(), now), "Updated today");
+  assert.equal(formatUpdatedLabel(new Date("2026-08-15T23:59:00").toISOString(), now), "Updated yesterday");
+  assert.equal(formatUpdatedLabel(new Date("2026-08-10T09:00:00").toISOString(), now), "Updated Aug 10");
+  assert.equal(formatUpdatedLabel("not-a-time", now), "Updated recently");
+});

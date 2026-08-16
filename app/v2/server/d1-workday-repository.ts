@@ -3,9 +3,11 @@ import {
   completeAggregate,
   ConflictError,
   MissingError,
+  summarizeExperiences,
   type Equipment,
   type ExperienceInput,
   type StopAction,
+  type StopKnowledgeSummary,
   type StopState,
   type WorkdayAggregate,
   type WorkdayStop,
@@ -35,12 +37,15 @@ type WorkdayRow = {
   trailer_number: string | null;
   trailer_type: Equipment["trailerType"] | null;
   odometer: string;
+  ending_odometer: string | null;
   active_stop_index: number;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
 };
 
+type StopEventRow = { stop_id: string; action: "arrive" | "depart"; recorded_at: string };
+type ExperienceRow = { yard: number; staging: number; staff: number; waiting_time: number; bathroom_access: number; comment: string | null; created_at: string };
 type StopRow = {
   id: string;
   provider_id: string;
@@ -134,7 +139,16 @@ export class D1WorkdayRepository implements WorkdayRepository {
     const next: WorkdayAggregate = {
       ...current,
       updatedAt: write.now,
-      stops: current.stops.map(stop => stop.id === stopId ? { ...stop, state: nextState } : stop),
+      // The event row stores write.now as created_at, so stamping the same value here keeps the
+      // aggregate returned to the caller identical to what a later read projects back.
+      stops: current.stops.map(stop => stop.id === stopId
+        ? {
+            ...stop,
+            state: nextState,
+            ...(action === "arrive" ? { arrivedAt: write.now } : {}),
+            ...(action === "depart" ? { departedAt: write.now } : {}),
+          }
+        : stop),
     };
     const eventId = crypto.randomUUID();
     const results = await this.batchWithReplay([
@@ -172,8 +186,8 @@ export class D1WorkdayRepository implements WorkdayRepository {
     const score = experience.scores;
     const results = await this.batchWithReplay([
       this.db.prepare(
-        `INSERT INTO v2_experiences (id, workday_id, stop_id, driver_id, yard, staging, staff, waiting_time, bathroom_access, bathroom_available, bathroom_condition, waiting_category, created_at)
-         SELECT ?, s.workday_id, s.id, s.driver_id, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        `INSERT INTO v2_experiences (id, workday_id, stop_id, driver_id, yard, staging, staff, waiting_time, bathroom_access, bathroom_available, bathroom_condition, waiting_category, comment, created_at)
+         SELECT ?, s.workday_id, s.id, s.driver_id, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
          FROM v2_stops s
          JOIN v2_workdays w ON w.id = s.workday_id AND w.driver_id = s.driver_id
          WHERE s.id = ? AND s.driver_id = ? AND s.state = 'departed' AND s.stop_order = w.active_stop_index
@@ -189,6 +203,7 @@ export class D1WorkdayRepository implements WorkdayRepository {
         experience.bathroom.available ? 1 : 0,
         experience.bathroom.condition,
         experience.waitingCategory,
+        experience.comment ?? null,
         write.now,
         stopId,
         write.driverId,
@@ -211,19 +226,25 @@ export class D1WorkdayRepository implements WorkdayRepository {
     return next;
   }
 
-  async finish(workdayId: string, write: IdempotentWrite): Promise<WorkdayAggregate> {
+  async finish(workdayId: string, write: IdempotentWrite, endingOdometer: string | null): Promise<WorkdayAggregate> {
     const replay = await this.replay(write);
     if (replay) return replay;
     const current = await this.loadAggregate(workdayId, write.driverId);
     if (!current) throw new MissingError("Workday not found.");
-    const next = { ...completeAggregate(current), updatedAt: write.now, completedAt: write.now };
+    const next = {
+      ...completeAggregate(current),
+      updatedAt: write.now,
+      completedAt: write.now,
+      ...(endingOdometer ? { endingOdometer } : {}),
+    };
     const results = await this.batchWithReplay([
       this.db.prepare(
         `UPDATE v2_workdays
-         SET state = 'completed', active_key = NULL, active_stop_index = (SELECT count(*) FROM v2_stops WHERE workday_id = ?), updated_at = ?, completed_at = ?
+         SET state = 'completed', active_key = NULL, active_stop_index = (SELECT count(*) FROM v2_stops WHERE workday_id = ?),
+             ending_odometer = COALESCE(?, ending_odometer), updated_at = ?, completed_at = ?
          WHERE id = ? AND driver_id = ? AND state = 'active'
            AND NOT EXISTS (SELECT 1 FROM v2_stops WHERE workday_id = ? AND state <> 'experience_published')`,
-      ).bind(workdayId, write.now, write.now, workdayId, write.driverId, workdayId),
+      ).bind(workdayId, endingOdometer, write.now, write.now, workdayId, write.driverId, workdayId),
       this.db.prepare(
         `INSERT INTO v2_idempotency (driver_id, idempotency_key, operation, workday_id, aggregate, created_at)
          SELECT ?, ?, ?, id, ?, ? FROM v2_workdays
@@ -249,10 +270,36 @@ export class D1WorkdayRepository implements WorkdayRepository {
     return aggregate;
   }
 
+  /**
+   * Cross-driver by design: this is not scoped to any single driver's workdays, only to a place.
+   * The service resolves stopId to providerId through the caller's own driver-scoped workday
+   * first, so a driver can only ask about a place that is actually on their route, but the
+   * knowledge returned pools every driver who has ever published one there.
+   */
+  async getStopKnowledge(providerId: string): Promise<StopKnowledgeSummary | null> {
+    const rows = await this.db.prepare(
+      `SELECT e.yard, e.staging, e.staff, e.waiting_time, e.bathroom_access, e.comment, e.created_at
+       FROM v2_experiences e
+       JOIN v2_stops s ON s.id = e.stop_id
+       WHERE s.provider_id = ?`,
+    ).bind(providerId).all<ExperienceRow>();
+    return summarizeExperiences(rows.results.map(row => ({
+      scores: {
+        yard: row.yard,
+        staging: row.staging,
+        staff: row.staff,
+        waitingTime: row.waiting_time,
+        bathroomAccess: row.bathroom_access,
+      },
+      comment: row.comment,
+      createdAt: row.created_at,
+    })));
+  }
+
   private async loadAggregate(workdayId: string, driverId: string): Promise<WorkdayAggregate | null> {
     const row = await this.db.prepare(
       `SELECT id, state, equipment_type, truck_number, trailer_number, trailer_type, odometer,
-              active_stop_index, created_at, updated_at, completed_at
+              ending_odometer, active_stop_index, created_at, updated_at, completed_at
        FROM v2_workdays WHERE id = ? AND driver_id = ? LIMIT 1`,
     ).bind(workdayId, driverId).first<WorkdayRow>();
     if (!row) return null;
@@ -260,6 +307,22 @@ export class D1WorkdayRepository implements WorkdayRepository {
       `SELECT id, provider_id, display_name, address, stop_type, stop_order, state
        FROM v2_stops WHERE workday_id = ? AND driver_id = ? ORDER BY stop_order`,
     ).bind(workdayId, driverId).all<StopRow>();
+    // Arrive and Depart are already durable in v2_stop_events, so the recorded times are
+    // projected onto each stop rather than duplicated into v2_stops. The first event of each
+    // action wins, which keeps an idempotent retry from moving a recorded time.
+    const eventRows = await this.db.prepare(
+      `SELECT stop_id, action, MIN(created_at) AS recorded_at
+       FROM v2_stop_events
+       WHERE workday_id = ? AND driver_id = ? AND action IN ('arrive', 'depart')
+       GROUP BY stop_id, action`,
+    ).bind(workdayId, driverId).all<StopEventRow>();
+    const recordedTimes = new Map<string, { arrivedAt?: string; departedAt?: string }>();
+    for (const event of eventRows.results) {
+      const entry = recordedTimes.get(event.stop_id) ?? {};
+      if (event.action === "arrive") entry.arrivedAt = event.recorded_at;
+      if (event.action === "depart") entry.departedAt = event.recorded_at;
+      recordedTimes.set(event.stop_id, entry);
+    }
     const equipment: Equipment = {
       type: row.equipment_type,
       truckNumber: row.truck_number,
@@ -280,7 +343,9 @@ export class D1WorkdayRepository implements WorkdayRepository {
         type: stop.stop_type,
         order: stop.stop_order,
         state: stop.state,
+        ...recordedTimes.get(stop.id),
       })),
+      ...(row.ending_odometer === null ? {} : { endingOdometer: row.ending_odometer }),
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       completedAt: row.completed_at,

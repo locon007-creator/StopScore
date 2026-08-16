@@ -2,11 +2,16 @@ import type { BathroomCondition, ExperienceInput, ExperienceScores, ExperienceTo
 import { EXPERIENCE_TOPICS } from "../domain/workday.ts";
 
 export const EXPERIENCE_CARD_DEFINITIONS = EXPERIENCE_TOPICS;
+/**
+ * Bands a measured wait falls into. They read as continuous ranges because the duration is timed
+ * from Arrive to Depart, so every possible wait lands in exactly one band with no gap between
+ * Quick and Standard.
+ */
 export const WAITING_OPTIONS = [
-  { value: "quick", label: "Quick", meaning: "15–45 min" },
-  { value: "standard", label: "Standard", meaning: "30 min–1 hr" },
-  { value: "long", label: "Long", meaning: "1–2 hr" },
-  { value: "extremely_delayed", label: "Extremely Delayed", meaning: "2+ hr" },
+  { value: "quick", label: "Quick", meaning: "Under 45 min" },
+  { value: "standard", label: "Standard", meaning: "45 min–2 hr" },
+  { value: "long", label: "Long", meaning: "2–4 hr" },
+  { value: "extremely_delayed", label: "Extremely Delayed", meaning: "4+ hr" },
 ] as const satisfies ReadonlyArray<{ value: WaitingCategory; label: string; meaning: string }>;
 
 export type BathroomAnswer = "yes" | "no";
@@ -16,6 +21,8 @@ export type ExperienceDraft = {
   waitingCategory: WaitingCategory | null;
   bathroomAnswer: BathroomAnswer | null;
   bathroomCondition: BathroomCondition | null;
+  /** Optional free text on Publish. Always a string in the draft; empty means skipped. */
+  comment: string;
 };
 
 /**
@@ -52,7 +59,11 @@ function assertWholeScore(score: number): number {
 }
 
 export function createExperienceDraft(stopId: string): ExperienceDraft {
-  return { stopId, scores: {}, waitingCategory: null, bathroomAnswer: null, bathroomCondition: null };
+  return { stopId, scores: {}, waitingCategory: null, bathroomAnswer: null, bathroomCondition: null, comment: "" };
+}
+
+export function setComment(draft: ExperienceDraft, comment: string): ExperienceDraft {
+  return { ...draft, comment };
 }
 
 export function setExperienceScore(draft: ExperienceDraft, key: ExperienceTopicKey, score: number): ExperienceDraft {
@@ -120,6 +131,7 @@ export function validateExperienceDraft(draft: ExperienceDraft): ExperienceValid
 
   const available = draft.bathroomAnswer === "yes";
   const scores = { ...draft.scores } as ExperienceScores;
+  const comment = draft.comment.trim();
   return {
     ok: true,
     summary: available && draft.bathroomCondition ? BATHROOM_CONDITION_LABELS[draft.bathroomCondition] : NO_BATHROOM_SUMMARY,
@@ -127,6 +139,7 @@ export function validateExperienceDraft(draft: ExperienceDraft): ExperienceValid
       scores,
       waitingCategory: draft.waitingCategory as WaitingCategory,
       bathroom: { available, condition: available ? draft.bathroomCondition : null },
+      ...(comment ? { comment } : {}),
     },
   };
 }
