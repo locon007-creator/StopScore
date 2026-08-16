@@ -36,15 +36,28 @@ test("out of order or unparseable timestamps never produce a waiting time", asyn
   assert.equal(stopWaitingMinutes(stop("not-a-time", "2026-05-16T09:42:00Z")), null);
 });
 
-test("measured minutes map onto the documented waiting bands", async () => {
+test("measured minutes map onto the waiting bands", async () => {
   const { waitingCategoryFromMinutes } = await workflow();
   assert.equal(waitingCategoryFromMinutes(0), "quick");
   assert.equal(waitingCategoryFromMinutes(44), "quick");
   assert.equal(waitingCategoryFromMinutes(45), "standard");
-  assert.equal(waitingCategoryFromMinutes(59), "standard");
-  assert.equal(waitingCategoryFromMinutes(60), "long");
-  assert.equal(waitingCategoryFromMinutes(119), "long");
-  assert.equal(waitingCategoryFromMinutes(120), "extremely_delayed");
+  assert.equal(waitingCategoryFromMinutes(119), "standard");
+  assert.equal(waitingCategoryFromMinutes(120), "long");
+  assert.equal(waitingCategoryFromMinutes(239), "long");
+  assert.equal(waitingCategoryFromMinutes(240), "extremely_delayed");
+  assert.equal(waitingCategoryFromMinutes(600), "extremely_delayed");
+});
+
+test("the grade a stop earns for waiting follows from the measured duration", async () => {
+  const { derivedWaitingCategory } = await workflow();
+  const { WAITING_CATEGORY_SCORES } = await import("../app/v2/workflow/experience.ts");
+  const measured = (minutes: number) =>
+    stop("2026-05-16T09:00:00Z", new Date(Date.parse("2026-05-16T09:00:00Z") + minutes * 60000).toISOString());
+
+  assert.equal(WAITING_CATEGORY_SCORES[derivedWaitingCategory(measured(18))!], 5);
+  assert.equal(WAITING_CATEGORY_SCORES[derivedWaitingCategory(measured(90))!], 4);
+  assert.equal(WAITING_CATEGORY_SCORES[derivedWaitingCategory(measured(180))!], 2);
+  assert.equal(WAITING_CATEGORY_SCORES[derivedWaitingCategory(measured(330))!], 1);
 });
 
 test("a measured wait reads back to the driver in plain units", async () => {

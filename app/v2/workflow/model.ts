@@ -51,11 +51,11 @@ export function resolveWorkflowPresentation(workday: WorkdayAggregate): { focusI
  * so the time a driver actually spent is the authoritative answer and no one has to estimate
  * it from memory at the end of a shift.
  *
- * The upper bound of each documented waiting band becomes its threshold, in minutes. Note that
- * the documented bands overlap between Quick (15-45 min) and Standard (30 min-1 hr), so
- * Standard resolves to a narrow 45-60 minute window here. Widening it is a one-line change.
+ * Band boundaries in minutes, set by the owner: Quick under 45 minutes, Standard up to 2 hours,
+ * Long up to 4 hours, and anything past that Extremely Delayed. The grade a stop earns for
+ * waiting follows from whichever band the measured duration lands in.
  */
-export const WAITING_THRESHOLD_MINUTES = { quick: 45, standard: 60, long: 120 } as const;
+export const WAITING_THRESHOLD_MINUTES = { quick: 45, standard: 120, long: 240 } as const;
 
 /** Minutes between the recorded Arrive and Depart, or null while either is missing. */
 export function stopWaitingMinutes(stop: WorkdayStop): number | null {
