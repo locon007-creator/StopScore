@@ -84,8 +84,10 @@ export function StopScoreWorkspace({ client }: { client: WorkdayClientState }) {
     if (authority.clearDraft) clearSetupDraft(storage);
     if (authority.source === "server") {
       // Reopening the app partway through a day lands on the active-day Home, so a driver sees
-      // where they stand before returning to Work Mode.
-      if (authority.aggregate.state === "active") setView("active-home");
+      // where they stand before returning to Work Mode. This effect re-runs on every workday
+      // change, so a driver already working stays in Work Mode rather than being thrown back
+      // Home after each Navigate, Arrive or Depart.
+      if (authority.aggregate.state === "active") setView(current => current === "active" ? "active" : "active-home");
       else if (authority.aggregate.state === "completed") setView("completed");
       else { setSetup(setupFromServer(authority.aggregate)); setView("setup"); }
     } else if (authority.source === "draft") {
