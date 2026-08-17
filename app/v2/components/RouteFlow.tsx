@@ -23,6 +23,8 @@ export function RouteFlow({ state, dispatch, onPrepare }: { state: SetupState; d
   const [saveStates, setSaveStates] = useState<Record<string, "saving" | "saved" | "error">>({});
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleteInvoker, setDeleteInvoker] = useState<HTMLElement | null>(null);
+  const [routeSaveStatus, setRouteSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [routeSaveMessage, setRouteSaveMessage] = useState("");
   const [startStatus, setStartStatus] = useState<"idle" | "starting" | "error">("idle");
   const [startError, setStartError] = useState<string | null>(null);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -162,6 +164,37 @@ export function RouteFlow({ state, dispatch, onPrepare }: { state: SetupState; d
     }
   };
 
+  /**
+   * Saves the current organize order as a reusable Saved Route. The endpoint
+   * expects display labels for stop type and an open/close window, which route
+   * setup does not collect, so those are sent empty rather than invented.
+   */
+  const saveRoute = async () => {
+    setRouteSaveStatus("saving");
+    setRouteSaveMessage("");
+    try {
+      const stops = state.organizingStops.map(stop => ({
+        name: stop.displayName,
+        address: stop.address,
+        type: STOP_TYPE_OPTIONS.find(option => option.type === stop.type)?.label ?? "Delivery",
+        open: "",
+        close: "",
+      }));
+      const name = `Route · ${stops.length} ${stops.length === 1 ? "stop" : "stops"} · ${new Date().toLocaleDateString()}`;
+      const response = await fetch("/api/saved-routes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, stops }),
+      });
+      if (!response.ok) throw new Error("save");
+      setRouteSaveStatus("saved");
+      setRouteSaveMessage("Route saved to Saved Routes.");
+    } catch {
+      setRouteSaveStatus("error");
+      setRouteSaveMessage("We couldn’t save this route. Try again.");
+    }
+  };
+
   const submitStart = async () => {
     setStartStatus("starting");
     setStartError(null);
@@ -225,7 +258,8 @@ export function RouteFlow({ state, dispatch, onPrepare }: { state: SetupState; d
         <button className="v2-back-link" type="button" onClick={() => dispatch({ type: "cancel-organize" })}><ArrowLeft aria-hidden="true" /><span>Back</span></button>
         <div className="v2-section-heading"><h1 ref={stageHeading} tabIndex={-1} id={stageTitleId}>Organize Route</h1><p>Use the arrows to reorder stops.</p></div>
         <ol className="v2-organize-list">{state.organizingStops.map((stop, index) => <li key={stop.providerId}><span>{index + 1}</span><div><strong>{stop.displayName}</strong><small>{stop.address}</small></div><div><button type="button" disabled={index === 0} onClick={() => dispatch({ type: "move-organizing-stop", from: index, to: index - 1 })} aria-label={`Move ${stop.displayName} up`}><ArrowUp aria-hidden="true" /></button><button type="button" disabled={index === state.organizingStops.length - 1} onClick={() => dispatch({ type: "move-organizing-stop", from: index, to: index + 1 })} aria-label={`Move ${stop.displayName} down`}><ArrowDown aria-hidden="true" /></button></div></li>)}</ol>
-        <div className="v2-action-stack"><button className="v2-secondary-button" type="button" onClick={() => dispatch({ type: "cancel-organize" })}>Back</button><button className="v2-primary-button" type="button" onClick={() => dispatch({ type: "commit-organize" })}>Save Order</button></div>
+        <div className="v2-action-stack"><button className="v2-secondary-button" type="button" onClick={() => dispatch({ type: "cancel-organize" })}>Back</button><button className="v2-secondary-button" type="button" disabled={routeSaveStatus === "saving" || state.organizingStops.length === 0} onClick={() => void saveRoute()}>{routeSaveStatus === "saving" ? "Saving…" : routeSaveStatus === "saved" ? "Route Saved" : "Save Route"}</button><button className="v2-primary-button" type="button" onClick={() => dispatch({ type: "commit-organize" })}>Save Order</button></div>
+        <span className="v2-sr-status" role="status" aria-live="polite">{routeSaveMessage}</span>
       </> : null}
 
       {state.stage === "prepare" ? <>

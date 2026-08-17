@@ -39,10 +39,22 @@ export type RouteStopInput = {
   order: number;
 };
 
+/**
+ * Times recorded when the driver pressed each Work Mode action. These are
+ * derived from the `v2_stop_events` log rather than stored on the stop row, so
+ * they are optional: aggregates produced before event replay was surfaced, and
+ * stops that have not reached a given state, simply omit the field.
+ */
+export type StopTimestamps = {
+  navigatedAt?: string;
+  arrivedAt?: string;
+  departedAt?: string;
+};
+
 export type WorkdayStop = RouteStopInput & {
   id: string;
   state: StopState;
-};
+} & StopTimestamps;
 
 export type WorkdayAggregate = {
   id: string;

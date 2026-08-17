@@ -7,10 +7,18 @@ import {
   type ExperienceInput,
   type StopAction,
   type StopState,
+  type StopTimestamps,
   type WorkdayAggregate,
   type WorkdayStop,
 } from "../domain/workday.ts";
 import type { IdempotentWrite, WorkdayRepository } from "./workday-repository.ts";
+
+/** Maps a recorded stop event action onto the aggregate field that exposes its time. */
+const EVENT_TIMESTAMP_FIELDS: Record<string, keyof StopTimestamps | undefined> = {
+  navigate: "navigatedAt",
+  arrive: "arrivedAt",
+  depart: "departedAt",
+};
 
 type D1Result = { meta?: { changes?: number } };
 type D1Statement = {
@@ -260,6 +268,17 @@ export class D1WorkdayRepository implements WorkdayRepository {
       `SELECT id, provider_id, display_name, address, stop_type, stop_order, state
        FROM v2_stops WHERE workday_id = ? AND driver_id = ? ORDER BY stop_order`,
     ).bind(workdayId, driverId).all<StopRow>();
+    const eventRows = await this.db.prepare(
+      `SELECT stop_id, action, MIN(created_at) AS created_at
+       FROM v2_stop_events WHERE workday_id = ? AND driver_id = ?
+       GROUP BY stop_id, action`,
+    ).bind(workdayId, driverId).all<{ stop_id: string; action: string; created_at: string }>();
+    const stopTimestamps = new Map<string, StopTimestamps>();
+    for (const event of eventRows.results) {
+      const key = EVENT_TIMESTAMP_FIELDS[event.action];
+      if (!key) continue;
+      stopTimestamps.set(event.stop_id, { ...stopTimestamps.get(event.stop_id), [key]: event.created_at });
+    }
     const equipment: Equipment = {
       type: row.equipment_type,
       truckNumber: row.truck_number,
@@ -280,6 +299,7 @@ export class D1WorkdayRepository implements WorkdayRepository {
         type: stop.stop_type,
         order: stop.stop_order,
         state: stop.state,
+        ...stopTimestamps.get(stop.id),
       })),
       createdAt: row.created_at,
       updatedAt: row.updated_at,

@@ -45,3 +45,4 @@ next-env.d.ts
 # local screen-preview gallery (generator + generated artifact)
 /.preview-tmp/
 /stopscore-preview.html
+/preview/

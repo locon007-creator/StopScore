@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { WorkdayAggregate } from "./domain/workday.ts";
+import { resolveBackTarget } from "./workflow/back-navigation.ts";
 import { AppShell } from "./components/AppShell";
 import { EquipmentFlow } from "./components/EquipmentFlow";
 import { Home } from "./components/Home";
@@ -106,6 +107,33 @@ export function StopScoreWorkspace({ client }: { client: WorkdayClientState }) {
   useEffect(() => {
     if (signInOpen) signInLink.current?.focus();
   }, [signInOpen]);
+
+  /**
+   * Android system Back. The app is state-driven rather than URL-routed, so a
+   * sentinel history entry is kept in place while an in-app back path exists;
+   * popping it moves one step backward and immediately re-arms the sentinel.
+   * When Back resolves to "exit" the sentinel is not restored, letting the
+   * platform close the app on the next press.
+   */
+  useEffect(() => {
+    // Guard the whole History API: server rendering and non-browser hosts may
+    // expose a partial window without history.
+    if (typeof window === "undefined" || typeof window.history?.pushState !== "function") return;
+    const target = resolveBackTarget(view, setup.stage);
+    if (target.kind === "exit") return;
+    window.history.pushState({ stopscoreBack: true }, "");
+    const onPopState = () => {
+      if (signInOpen) { setSignInOpen(false); return; }
+      const current = resolveBackTarget(view, setup.stage);
+      if (current.kind === "stage") dispatch({ type: "set-stage", stage: current.stage });
+      else if (current.kind === "view") setView(current.view);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      if (window.history.state?.stopscoreBack) window.history.back();
+    };
+  }, [dispatch, setup.stage, signInOpen, view]);
 
   const begin = () => {
     if (session.status === "authenticated") {

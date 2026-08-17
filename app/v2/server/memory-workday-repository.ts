@@ -10,6 +10,14 @@ import {
 } from "../domain/workday.ts";
 import type { IdempotentWrite, WorkdayRepository } from "./workday-repository.ts";
 
+/** Mirrors the D1 event log so in-memory runs expose the same recorded times. */
+function timestampForAction(action: StopAction, now: string) {
+  if (action === "navigate") return { navigatedAt: now };
+  if (action === "arrive") return { arrivedAt: now };
+  if (action === "depart") return { departedAt: now };
+  return {};
+}
+
 type StoredWorkday = { aggregate: WorkdayAggregate; dayDate: string };
 type Replay = { operation: string; aggregate: WorkdayAggregate };
 
@@ -39,7 +47,7 @@ export class MemoryWorkdayRepository implements WorkdayRepository {
 
   async recordStopEvent(
     stopId: string,
-    _action: StopAction,
+    action: StopAction,
     expectedState: StopState,
     nextState: StopState,
     write: IdempotentWrite,
@@ -55,7 +63,9 @@ export class MemoryWorkdayRepository implements WorkdayRepository {
     stored.aggregate = {
       ...stored.aggregate,
       updatedAt: write.now,
-      stops: stored.aggregate.stops.map(item => item.id === stopId ? { ...item, state: nextState } : { ...item }),
+      stops: stored.aggregate.stops.map(item => item.id === stopId
+        ? { ...item, state: nextState, ...timestampForAction(action, write.now) }
+        : { ...item }),
     };
     return this.commitReplay(write, stored.aggregate);
   }
