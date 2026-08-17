@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local, git-ignored screen-preview workspace. Not application source.
+    ".preview-tmp/**",
   ]),
 ]);
 

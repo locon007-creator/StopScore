@@ -41,3 +41,7 @@ next-env.d.ts
 /outputs/
 /work/
 .worktrees/
+
+# local screen-preview gallery (generator + generated artifact)
+/.preview-tmp/
+/stopscore-preview.html
