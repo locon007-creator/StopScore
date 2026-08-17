@@ -47,7 +47,9 @@ export default defineConfig(async () => {
   return {
     server: {
       host: "0.0.0.0",
-      allowedHosts: ["terminal.local"],
+      // ".e2b.app" allows the sandboxed cloud preview proxy host
+      // (https://{port}-{sandboxId}.e2b.app) to reach this dev server.
+      allowedHosts: ["terminal.local", ".e2b.app"],
       ...(isCodexSeatbeltSandbox
         ? { watch: { useFsEvents: false, usePolling: true } }
         : {}),
