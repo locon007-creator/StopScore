@@ -46,3 +46,4 @@ next-env.d.ts
 /.preview-tmp/
 /stopscore-preview.html
 /preview/
+/preview-stages/
